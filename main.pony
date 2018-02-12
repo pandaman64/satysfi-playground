@@ -1,5 +1,7 @@
 use "net/http"
 use "files"
+use "crypto"
+use "encode/base64"
 
 actor Main
   new create(env: Env) =>
@@ -28,8 +30,9 @@ class Router is HTTPHandler
   let _auth: AmbientAuth
   let _out: StdStream
   let _session: HTTPSession
-  let _buffer: Array[U8]
+  var _buffer: Array[U8] iso
   var _payload: (Payload val | None)
+  var _compiling: Bool
 
   let _base: FilePath
 
@@ -38,12 +41,12 @@ class Router is HTTPHandler
     _out = out
     _session = session
     _payload = None
-    _buffer = Array[U8]
+    _buffer = recover iso Array[U8] end
+    _compiling = false
 
     _base = base
 
   fun ref apply(payload: Payload val) =>
-    _payload = payload
     if payload.method == "GET" then
       try
         var ok = true
@@ -63,7 +66,6 @@ class Router is HTTPHandler
                 response.add_chunk(consume buf)
               end
               payload.respond(consume response)
-              _payload = None
             else
               ok = false
             end
@@ -77,23 +79,61 @@ class Router is HTTPHandler
           end
         end
       end
+    elseif (payload.method == "POST") and (payload.url.path == "/compile") then
+      _out.print("posting")
+      _payload = payload
+      _compiling = true
+      return
     end
 
     let response = payload.response(StatusNotFound)
     payload.respond(consume response)
-    _payload = None
 
   fun ref chunk(data: (String val | Array[U8] val)) =>
+    if not _compiling then
+      _out.print("not compiling")
+      return
+    end
+
+    _out.print("chunk")
+    _out.print(data)
     let d = match data
       | let s: String val => s.values()
       | let a: Array[U8] val => a.values()
-      end
-    _buffer.concat(consume d)
+    end
 
-  fun ref finish() =>
+    for c in d do
+        _buffer.push(c)
+    end
+
+  fun ref finished() =>
+    if not _compiling then
+      _out.print("not compiling")
+    end
+
+    _out.print("finish")
+    let b' = (_buffer = recover iso Array[U8] end)
+    let b = recover val consume b' end
+
     let len = _buffer.size()
     let s = recover iso String(len) end
-    for c in _buffer.values() do
+    for c in b.values() do
       s.push(c)
     end
     _out.print(consume s)
+
+    let sha256 = SHA256(b)
+    let id = ToHexString(sha256)
+
+    try
+      let input = FilePath(_auth, id + ".saty")?
+      let file =
+        match CreateFile(input)
+        | let f: File => f
+        else
+          return
+        end
+
+      file.write(b)
+    end
+
