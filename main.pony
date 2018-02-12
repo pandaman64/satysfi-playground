@@ -1,7 +1,9 @@
 use "net/http"
 use "files"
 use "crypto"
-use "encode/base64"
+use "process"
+use "json"
+use "collections"
 
 actor Main
   new create(env: Env) =>
@@ -13,7 +15,8 @@ actor Main
     end
 
     let base = try
-      FilePath(auth, "/tmp")?
+      //FilePath(auth, "/tmp")?
+      FilePath(auth, "")?
     else
       env.out.print("failed to get capability of /tmp")
       return
@@ -60,13 +63,16 @@ class Router is HTTPHandler
             | let file: File =>
               while true do
                 let buf = file.read(2048)
+                _out.print("bufread: " + buf.size().string())
                 if buf.size() == 0 then
                   break
                 end
-                response.add_chunk(consume buf)
+                response.send_chunk(consume buf)
               end
+              _out.print("responding")
               payload.respond(consume response)
             else
+              _out.print("cannot open the given file")
               ok = false
             end
           else
@@ -127,6 +133,7 @@ class Router is HTTPHandler
 
     try
       let input = FilePath(_auth, id + ".saty")?
+      let output = FilePath(_base, id + ".pdf")?
       let file =
         match CreateFile(input)
         | let f: File => f
@@ -135,5 +142,49 @@ class Router is HTTPHandler
         end
 
       file.write(b)
+
+      let runner = FilePath(_auth, "run.sh")?
+      let monitor = ProcessMonitor(
+        _auth,
+        _auth,
+        object iso is ProcessNotify
+          let command_output: String iso = recover String end
+
+          fun ref created(process: ProcessMonitor ref) =>
+            _out.print("created")
+          fun ref failed(process: ProcessMonitor ref, err: ProcessError) =>
+            _out.print("error")
+          fun ref stdout(process: ProcessMonitor ref, data: Array[U8] iso) =>
+            let d: Array[U8] val = consume data
+            _out.print("STDOUT:")
+            _out.print(d)
+            command_output.append(d)
+          fun ref stderr(process: ProcessMonitor ref, data: Array[U8] iso) =>
+            let d: Array[U8] val = consume data
+            _out.print("STDERR:")
+            _out.print(d)
+            command_output.append(d)
+          fun ref dispose(process: ProcessMonitor ref, exit_code: I32) =>
+            _out.print("dispose")
+            let map = Map[String, JsonType]
+            map("output") = command_output.clone()
+            map("status") = exit_code.i64()
+            map("name") = id + ".pdf"
+            let json = JsonObject.from_map(consume map)
+            
+            match _payload
+            | let p: Payload val =>
+              let response = p.response()
+              response.add_chunk(json.string())
+              p.respond(consume response)
+            else
+              _out.print("payload not set")
+              return
+            end
+        end,
+        runner,
+        ["run.sh"; input.path; output.path],
+        [])
+      monitor.done_writing()
     end
 
