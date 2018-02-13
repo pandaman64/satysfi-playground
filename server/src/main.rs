@@ -17,7 +17,7 @@ use sha2::Digest;
 use std::process::{Command, Stdio};
 use std::fs;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Write};
 
 use std::error::Error;
 
@@ -48,13 +48,32 @@ struct Output {
 fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
     let hash = sha2::Sha256::digest_str(&input.content);
     let hash = format!("{:x}", hash);
+    let filename = format!("{}.pdf", hash);
+    let stdout_filename = format!("{}/stdout", hash);
+    let stderr_filename = format!("{}/stderr", hash);
+
+    if Path::new(&hash).is_dir() {
+        let mut stdout_file = File::open(&stdout_filename)?;
+        let mut stderr_file = File::open(&stderr_filename)?;
+        let mut stdout = String::new();
+        let mut stderr = String::new();
+
+        stdout_file.read_to_string(&mut stdout)?;
+        stderr_file.read_to_string(&mut stderr)?;
+
+        return Ok(Json(Output{
+            name: filename,
+            success: true,
+            stdout: stdout,
+            stderr: stderr,
+        }))
+    }
     fs::create_dir(&hash)?;
 
     let input_file_name = format!("{}/input.saty", hash);
     let mut input_file = File::create(&input_file_name)?;
     input_file.write_all(input.content.as_bytes())?;
 
-    let filename = format!("{}.pdf", hash);
     let child = Command::new("run.sh")
         .args(&[&input_file_name, &format!("/tmp/satysfi-playground/{}", filename)])
         .env_clear()
@@ -68,8 +87,8 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
     let stderr = String::from_utf8(output.stderr)?;
 
     {
-        let mut stdout_file = File::create(&format!("{}/stdout", hash))?;
-        let mut stderr_file = File::create(&format!("{}/stderr", hash))?;
+        let mut stdout_file = File::create(&stdout_filename)?;
+        let mut stderr_file = File::create(&stderr_filename)?;
 
         stdout_file.write_all(stdout.as_bytes())?;
         stderr_file.write_all(stderr.as_bytes())?;
