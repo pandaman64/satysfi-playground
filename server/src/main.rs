@@ -15,6 +15,7 @@ extern crate sha2;
 use sha2::Digest;
 
 use std::process::{Command, Stdio};
+use std::fs;
 use std::fs::File;
 use std::io::Write;
 
@@ -46,7 +47,9 @@ struct Output {
 #[post("/compile", format = "application/json", data = "<input>")]
 fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
     let hash = sha2::Sha256::digest_str(&input.content);
-    let input_file_name = format!("{:x}.saty", hash);
+    fs::create_dir(&hash)?;
+
+    let input_file_name = format!("{:x}/input.saty", hash);
     let mut input_file = File::create(&input_file_name)?;
     input_file.write_all(input.content.as_bytes())?;
 
@@ -60,12 +63,22 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
         .spawn()?;
 
     let output = child.wait_with_output()?;
+    let stdout = String::from_utf8(output.stdout)?;
+    let stderr = String::from_utf8(output.stderr)?;
+
+    {
+        let mut stdout_file = File::create(&format!("{:x}/stdout", hash));
+        let mut stderr_file = File::create(&format!("{:x}/stderr", hash));
+
+        stdout_file.write_all(stdout.as_bytes())?;
+        stderr_file.write_all(stderr.as_bytes())?;
+    }
     
     Ok(Json(Output{
         name: filename,
         success: output.status.success(),
-        stdout: String::from_utf8(output.stdout)?,
-        stderr: String::from_utf8(output.stderr)?,
+        stdout: stdout,
+        stderr: stderr,
     }))
 }
 
