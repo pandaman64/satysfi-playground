@@ -47,13 +47,14 @@ struct Output {
 #[post("/compile", format = "application/json", data = "<input>")]
 fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
     let hash = sha2::Sha256::digest_str(&input.content);
+    let hash = format!("{:x}", hash);
     fs::create_dir(&hash)?;
 
-    let input_file_name = format!("{:x}/input.saty", hash);
+    let input_file_name = format!("{}/input.saty", hash);
     let mut input_file = File::create(&input_file_name)?;
     input_file.write_all(input.content.as_bytes())?;
 
-    let filename = format!("{:x}.pdf", hash);
+    let filename = format!("{}.pdf", hash);
     let child = Command::new("run.sh")
         .args(&[&input_file_name, &format!("/tmp/satysfi-playground/{}", filename)])
         .env_clear()
@@ -67,8 +68,8 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
     let stderr = String::from_utf8(output.stderr)?;
 
     {
-        let mut stdout_file = File::create(&format!("{:x}/stdout", hash));
-        let mut stderr_file = File::create(&format!("{:x}/stderr", hash));
+        let mut stdout_file = File::create(&format!("{}/stdout", hash))?;
+        let mut stderr_file = File::create(&format!("{}/stderr", hash))?;
 
         stdout_file.write_all(stdout.as_bytes())?;
         stderr_file.write_all(stderr.as_bytes())?;
