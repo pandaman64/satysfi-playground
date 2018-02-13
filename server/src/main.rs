@@ -18,6 +18,9 @@ use std::process::{Command, Stdio};
 use std::fs::File;
 use std::io::Write;
 
+extern crate rocket_cors;
+use rocket_cors::{Cors, AllowedOrigins};
+
 use std::error::Error;
 
 #[get("/")]
@@ -70,7 +73,11 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
 }
 
 fn main() {
+    let (origins, _) = AllowedOrigins::some(&["https://pandaman64.github.io"]);
+    let cors = Cors { allowed_origins: origins, .. Default::default() };
+    
     rocket::ignite()
         .mount("/", routes![index, files, compile])
+        .attach(cors)
         .launch();
 }
