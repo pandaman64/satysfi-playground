@@ -41,7 +41,7 @@
                 stdout.value = "Compiling...";
                 stderr.value = "";
                 let code = {
-                    content: document.getElementById("code").value
+                    content: editor.getValue()
                 };
                 console.log(code);
                 let request = new XMLHttpRequest();
