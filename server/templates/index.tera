@@ -55,6 +55,7 @@
                     stderr.value = response.stderr;
                     let pdf_container = document.getElementById("result-container");
                     pdf_container.src = "/files/" + response.name;
+                    location.href = "http://satysfi-playground.tech/?id=" + response.name;
                 });
                 request.send(JSON.stringify(code));
             }
@@ -85,7 +86,7 @@ document (|
                 </script>
             </div>
             <div class='area-result'>
-                <iframe id="result-container" src="/files/2f4b1088a4526a5faf4dea3c3ca6940113247c550951e1ecc74e510ff5ab689b.pdf" style="width: 100%; height: 100%"></iframe>
+                <iframe id="result-container" src="/files/{{pdfname}}" style="width: 100%; height: 100%"></iframe>
             </div>
             <div class='area-output'>
                 <h3>stdout</h3>

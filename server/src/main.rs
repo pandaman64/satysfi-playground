@@ -1,4 +1,4 @@
-#![feature(plugin)]
+#![feature(plugin, custom_derive)]
 #![plugin(rocket_codegen)]
 
 #[macro_use]
@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 extern crate rocket_contrib;
 use rocket_contrib::Json;
+use rocket_contrib::Template;
 
 extern crate sha2;
 use sha2::Digest;
@@ -21,9 +22,27 @@ use std::io::{Read, Write};
 
 use std::error::Error;
 
+use std::collections::HashMap;
+
+#[derive(FromForm, Debug)]
+struct IndexQuery {
+    id: String,
+}
+
+#[get("/?<query>")]
+fn index_query(query: Option<IndexQuery>) -> Template {
+    println!("{:?}", query);
+    let context = {
+        let mut m = HashMap::new();
+        m.insert("pdfname", query.map_or("2f4b1088a4526a5faf4dea3c3ca6940113247c550951e1ecc74e510ff5ab689b.pdf".to_string(), |q| q.id));
+        m
+    };
+    Template::render("index", &context)
+}
+
 #[get("/")]
-fn index() -> NamedFile {
-    NamedFile::open(Path::new("./index.html")).unwrap()
+fn index() -> Template {
+    index_query(None)
 }
 
 #[get("/files/<file..>")]
@@ -104,6 +123,7 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![index, files, compile])
+        .mount("/", routes![index, index_query, files, compile])
+        .attach(Template::fairing())
         .launch();
 }

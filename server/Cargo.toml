@@ -16,5 +16,5 @@ rocket_cors = "0.2.1"
 [dependencies.rocket_contrib]
 version = "*"
 default-features = false
-features = ["json"]
+features = ["json", "tera_templates"]
 
