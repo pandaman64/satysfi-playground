@@ -55,7 +55,7 @@
                     stderr.value = response.stderr;
                     let pdf_container = document.getElementById("result-container");
                     pdf_container.src = "/files/" + response.name + ".pdf";
-                    location.href = "http://satysfi-playground.tech/?id=" + response.name;
+                    history.replaceState({}, "SATySFi Playground", "http://satysfi-playground.tech/?id=" + response.name);
                 });
                 request.send(JSON.stringify(code));
             }
