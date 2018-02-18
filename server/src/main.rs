@@ -20,6 +20,7 @@ use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 
+use std::fmt;
 use std::error::Error;
 
 use std::collections::HashMap;
@@ -31,12 +32,80 @@ struct IndexQuery {
 
 #[get("/?<query>")]
 fn index_query(query: Option<IndexQuery>) -> Template {
-    println!("{:?}", query);
-    let context = {
-        let mut m = HashMap::new();
-        m.insert("pdfname", query.map_or("2f4b1088a4526a5faf4dea3c3ca6940113247c550951e1ecc74e510ff5ab689b.pdf".to_string(), |q| q.id));
-        m
-    };
+    #[derive(Debug)]
+    struct QueryError {
+        message: String
+    }
+    impl QueryError {
+        fn new(message: String) -> Self {
+            QueryError { message }
+        }
+    }
+    impl fmt::Display for QueryError {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.debug_struct("QueryError")
+                .field("message", &self.message)
+                .finish()
+        }
+    }
+    impl Error for QueryError {
+        fn description(&self) -> &str {
+            &self.message
+        }
+
+        fn cause(&self) -> Option<&Error> {
+            None
+        }
+    }
+
+    fn retrieve_file<'a>(id: &'a str) -> Result<String, Box<Error>> {
+        if id.len() != 64 {
+            return Err(Box::new(QueryError::new("invalid length".into())));
+        }
+        for c in id.chars() {
+            if !c.is_digit(16) {
+                return Err(Box::new(QueryError::new("invalid character type".into())));
+            }
+        }
+
+        if Path::new(id).is_dir() {
+            let mut input_file = File::open(&format!("{}/input.saty", id))?;
+            let mut content = String::new();
+            input_file.read_to_string(&mut content)?;
+            Ok(content)
+        } else {
+            return Err(Box::new(QueryError::new("not exist".into())));
+        }
+    }
+
+    fn create_context(query: Option<IndexQuery>) -> HashMap<&'static str, String> {
+        if let Some(query) = query {
+            if let Ok(s) = retrieve_file(&query.id) {
+                let mut ret = HashMap::new();
+                ret.insert("code", s);
+                ret.insert("pdfname", query.id);
+                return ret;
+            }
+        }
+
+        let mut ret = HashMap::new();
+        ret.insert("code", "@require: stdjabook
+
+document (|
+  title = {\\SATySFi;概説};
+  author = {Takashi SUWA};
+  show-title = true;
+  show-toc = false;
+|) '<
+    +pn {
+        Hello, \\SATySFi; Playground!
+    }
+>".to_string());
+        ret.insert("pdfname", "2f4b1088a4526a5faf4dea3c3ca6940113247c550951e1ecc74e510ff5ab689b".to_string());
+        ret
+    }
+
+    let context = create_context(query);
     Template::render("index", &context)
 }
 
@@ -81,7 +150,7 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
         stderr_file.read_to_string(&mut stderr)?;
 
         return Ok(Json(Output{
-            name: filename,
+            name: hash,
             success: true,
             stdout: stdout,
             stderr: stderr,
@@ -114,7 +183,7 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
     }
     
     Ok(Json(Output{
-        name: filename,
+        name: hash,
         success: output.status.success(),
         stdout: stdout,
         stderr: stderr,

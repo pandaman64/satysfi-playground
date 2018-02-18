@@ -54,7 +54,7 @@
                     stdout.value = response.stdout;
                     stderr.value = response.stderr;
                     let pdf_container = document.getElementById("result-container");
-                    pdf_container.src = "/files/" + response.name;
+                    pdf_container.src = "/files/" + response.name + ".pdf";
                     location.href = "http://satysfi-playground.tech/?id=" + response.name;
                 });
                 request.send(JSON.stringify(code));
@@ -67,18 +67,7 @@
                 <button style="font-size: 40px" onclick="compile()">Compile</button>
             </div>
             <div class='area-code'>
-                <div id='editor'>@require: stdjabook
-
-document (|
-  title = {\SATySFi;概説};
-  author = {Takashi SUWA};
-  show-title = true;
-  show-toc = false;
-|) '<
-    +pn {
-        Hello, \SATySFi; Playground!
-    }
-></div>
+                <div id='editor'>{{code}}</div>
                 <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.3.1/ace.js" type="text/javascript" charset="utf-8"></script>
                 <script>
                     let editor = ace.edit("editor");
@@ -86,7 +75,7 @@ document (|
                 </script>
             </div>
             <div class='area-result'>
-                <iframe id="result-container" src="/files/{{pdfname}}" style="width: 100%; height: 100%"></iframe>
+                <iframe id="result-container" src="/files/{{pdfname}}.pdf" style="width: 100%; height: 100%"></iframe>
             </div>
             <div class='area-output'>
                 <h3>stdout</h3>
