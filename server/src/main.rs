@@ -30,6 +30,83 @@ struct IndexQuery {
     id: String,
 }
 
+#[get("/permalink/<query>")]
+fn permalink(query: String) -> Template {
+    #[derive(Debug)]
+    struct QueryError {
+        message: String
+    }
+    impl QueryError {
+        fn new(message: String) -> Self {
+            QueryError { message }
+        }
+    }
+    impl fmt::Display for QueryError {
+        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            f.debug_struct("QueryError")
+                .field("message", &self.message)
+                .finish()
+        }
+    }
+    impl Error for QueryError {
+        fn description(&self) -> &str {
+            &self.message
+        }
+
+        fn cause(&self) -> Option<&Error> {
+            None
+        }
+    }
+
+    fn retrieve_file<'a>(id: &'a str) -> Result<String, Box<Error>> {
+        if id.len() != 64 {
+            return Err(Box::new(QueryError::new("invalid length".into())));
+        }
+        for c in id.chars() {
+            if !c.is_digit(16) {
+                return Err(Box::new(QueryError::new("invalid character type".into())));
+            }
+        }
+
+        if Path::new(id).is_dir() {
+            let mut input_file = File::open(&format!("{}/input.saty", id))?;
+            let mut content = String::new();
+            input_file.read_to_string(&mut content)?;
+            Ok(content)
+        } else {
+            return Err(Box::new(QueryError::new("not exist".into())));
+        }
+    }
+
+    fn create_context(query: String) -> HashMap<&'static str, String> {
+        if let Ok(s) = retrieve_file(&query) {
+            let mut ret = HashMap::new();
+            ret.insert("code", s);
+            ret.insert("pdfname", query);
+            return ret;
+        }
+
+        let mut ret = HashMap::new();
+        ret.insert("code", "@require: stdjabook
+
+document (|
+  title = {\\SATySFi;概説};
+  author = {Takashi SUWA};
+  show-title = true;
+  show-toc = false;
+|) '<
+    +pn {
+        Hello, \\SATySFi; Playground!
+    }
+>".to_string());
+        ret.insert("pdfname", "2f4b1088a4526a5faf4dea3c3ca6940113247c550951e1ecc74e510ff5ab689b".to_string());
+        ret
+    }
+
+    let context = create_context(query);
+    Template::render("index", &context)
+}
+
 #[get("/?<query>")]
 fn index_query(query: Option<IndexQuery>) -> Template {
     #[derive(Debug)]
@@ -192,7 +269,7 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![index, index_query, files, compile])
+        .mount("/", routes![index, index_query, permalink, files, compile])
         .attach(Template::fairing())
         .launch();
 }
