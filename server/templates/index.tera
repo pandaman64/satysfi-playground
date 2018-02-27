@@ -66,10 +66,10 @@
                         <a class="nav-link" href="#stdout" data-toggle="tab" role="tab">stdout</a>
                         <a class="nav-link" href="#stderr" data-toggle="tab" role="tab">stderr</a>
                     </nav>
-                    <div class="tab-content">
-                        <iframe class="tab-pane active" id="result-container" src="/files/{{pdfname}}.pdf" style="width: 100%; height: 100%" role="tabpanel"></iframe>
-                        <textarea class="tab-pane" id="stdout" readonly style="width: 100%" role="tabpanel"></textarea>
-                        <textarea class="tab-pane" id="stderr" readonly style="width: 100%" role="tabpanel"></textarea>
+                    <div class="tab-content h-100">
+                        <iframe class="tab-pane active h-100" id="result-container" src="/files/{{pdfname}}.pdf" style="width: 100%; height: 100%" role="tabpanel"></iframe>
+                        <textarea class="tab-pane h-100" id="stdout" readonly style="width: 100%" role="tabpanel"></textarea>
+                        <textarea class="tab-pane h-100" id="stderr" readonly style="width: 100%" role="tabpanel"></textarea>
                     </div>
                 </div>
             </div>
