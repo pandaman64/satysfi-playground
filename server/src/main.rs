@@ -91,11 +91,9 @@ document (|
   show-title = true;
   show-toc = false;
 |) '<
-    +pn {
-        Hello, \\SATySFi; Playground!
-    }
+    +p { Hello, \\SATySFi; Playground! }
 >".to_string());
-    ret.insert("pdfname", "2f4b1088a4526a5faf4dea3c3ca6940113247c550951e1ecc74e510ff5ab689b".to_string());
+    ret.insert("pdfname", "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string());
     ret
 }
 
@@ -106,7 +104,7 @@ fn permalink(query: String) -> Template {
 
 #[get("/")]
 fn index() -> Template {
-    Template::render("index", &create_context("2f4b1088a4526a5faf4dea3c3ca6940113247c550951e1ecc74e510ff5ab689b".to_string()))
+    Template::render("index", &create_context("9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string()))
 }
 
 #[get("/files/<file..>")]
