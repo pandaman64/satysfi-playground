@@ -121,8 +121,20 @@ fn make_output_path<P: AsRef<Path>>(hash: P) -> PathBuf {
     make_output_dir(hash).join("output.pdf")
 }
 
+use rocket::response;
+// https://github.com/SergioBenitez/Rocket/issues/95#issuecomment-354824883
+struct CachedFile(NamedFile);
+
+impl<'a> response::Responder<'a> for CachedFile {
+    fn respond_to(self, req: &rocket::Request) -> response::Result<'a> {
+        response::Response::build_from(self.0.respond_to(req)?)
+            .raw_header("Cache-Control", "max-age=86400") // a day
+            .ok()
+    }
+}
+
 #[get("/files/<hash..>")]
-fn files(hash: PathBuf) -> Option<NamedFile> {
+fn files(hash: PathBuf) -> Option<CachedFile> {
     match NamedFile::open(make_output_path(&hash)) {
         Ok(file) => Some(file),
         _ => File::open(make_input_path(&hash))
@@ -133,7 +145,7 @@ fn files(hash: PathBuf) -> Option<NamedFile> {
                     compile(content).ok()
                 })
                 .and_then(|output| NamedFile::open(output.name).ok())
-    }
+    }.map(CachedFile)
 }
 
 #[derive(Deserialize)]
