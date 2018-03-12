@@ -25,6 +25,8 @@ use std::error::Error;
 
 use std::collections::HashMap;
 
+const base_path: &'static str = "tmp";
+
 #[derive(Debug)]
 struct QueryError {
     message: String
@@ -64,14 +66,10 @@ fn retrieve_file<'a>(id: &'a str) -> Result<String, Box<Error>> {
         }
     }
 
-    if Path::new(id).is_dir() {
-        let mut input_file = File::open(&format!("{}/input.saty", id))?;
-        let mut content = String::new();
-        input_file.read_to_string(&mut content)?;
-        Ok(content)
-    } else {
-        return Err(Box::new(QueryError::new("not exist".into())));
-    }
+    let mut input_file = File::open(make_input_path(id))?;
+    let mut content = String::new();
+    input_file.read_to_string(&mut content)?;
+    Ok(content)
 }
 
 fn create_context(query: String) -> HashMap<&'static str, String> {
@@ -107,9 +105,35 @@ fn index() -> Template {
     Template::render("index", &create_context("9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string()))
 }
 
-#[get("/files/<file..>")]
-fn files(file: PathBuf) -> Option<NamedFile> {
-    NamedFile::open(Path::new("/tmp/satysfi-playground/").join(file)).ok()
+fn make_input_dir<P: AsRef<Path>>(hash: P) -> PathBuf {
+    Path::new(base_path).join(hash).join("input")
+}
+
+fn make_input_path<P: AsRef<Path>>(hash: P) -> PathBuf {
+    make_input_dir(hash).join("input.saty")
+}
+
+fn make_output_dir<P: AsRef<Path>>(hash: P) -> PathBuf {
+    Path::new(base_path).join(hash).join("output")
+}
+
+fn make_output_path<P: AsRef<Path>>(hash: P) -> PathBuf {
+    make_output_dir(hash).join("output.pdf")
+}
+
+#[get("/files/<hash..>")]
+fn files(hash: PathBuf) -> Option<NamedFile> {
+    match NamedFile::open(make_output_path(&hash)) {
+        Ok(file) => Some(file),
+        _ => File::open(make_input_path(&hash))
+                .ok()
+                .and_then(|mut f| {
+                    let mut content = String::new();
+                    f.read_to_string(&mut content).ok()?;
+                    compile(content).ok()
+                })
+                .and_then(|output| NamedFile::open(output.name).ok())
+    }
 }
 
 #[derive(Deserialize)]
@@ -125,15 +149,13 @@ struct Output {
     stderr: String,
 }
 
-#[post("/compile", format = "application/json", data = "<input>")]
-fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
-    let hash = sha2::Sha256::digest_str(&input.content);
+fn compile(input: String) -> Result<Output, Box<Error>> {
+    let hash = sha2::Sha256::digest_str(&input);
     let hash = format!("{:x}", hash);
-    let filename = format!("{}.pdf", hash);
-    let stdout_filename = format!("{}/stdout", hash);
-    let stderr_filename = format!("{}/stderr", hash);
+    let stdout_filename = make_input_dir(&hash).join("stdout");
+    let stderr_filename = make_input_dir(&hash).join("stderr");
 
-    if Path::new(&hash).is_dir() {
+    if Path::new(base_path).join(&hash).is_dir() {
         let mut stdout_file = File::open(&stdout_filename)?;
         let mut stderr_file = File::open(&stderr_filename)?;
         let mut stdout = String::new();
@@ -142,31 +164,40 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
         stdout_file.read_to_string(&mut stdout)?;
         stderr_file.read_to_string(&mut stderr)?;
 
-        return Ok(Json(Output{
+        return Ok(Output{
             name: hash,
             success: true,
             stdout: stdout,
             stderr: stderr,
-        }))
+        })
     }
-    fs::create_dir(&hash)?;
 
-    let input_file_name = format!("{}/input.saty", hash);
+    use std::fs::create_dir_all;
+    println!("hoy");
+    create_dir_all(make_input_dir(&hash))?;
+    println!("hoy");
+    create_dir_all(make_output_dir(&hash))?;
+
+    let input_file_name = make_input_path(&hash);
     let mut input_file = File::create(&input_file_name)?;
-    input_file.write_all(input.content.as_bytes())?;
+    println!("hoy");
+    input_file.write_all(input.as_bytes())?;
 
+    println!("hoy");
     let child = Command::new("run.sh")
-        .args(&[&input_file_name, &format!("/tmp/satysfi-playground/{}", filename)])
+        .args(&[&input_file_name, &make_output_path(&hash)])
         .env_clear()
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
 
+    println!("hoy");
     let output = child.wait_with_output()?;
     let stdout = String::from_utf8(output.stdout)?;
     let stderr = String::from_utf8(output.stderr)?;
 
+    println!("hoy");
     {
         let mut stdout_file = File::create(&stdout_filename)?;
         let mut stderr_file = File::create(&stderr_filename)?;
@@ -175,17 +206,22 @@ fn compile(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
         stderr_file.write_all(stderr.as_bytes())?;
     }
     
-    Ok(Json(Output{
+    Ok(Output{
         name: hash,
         success: output.status.success(),
         stdout: stdout,
         stderr: stderr,
-    }))
+    })
+}
+
+#[post("/compile", format = "application/json", data = "<input>")]
+fn compile_handler(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
+    compile(input.content.to_string()).map(Json)
 }
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![index, permalink, files, compile])
+        .mount("/", routes![index, permalink, files, compile_handler])
         .attach(Template::fairing())
         .launch();
 }
