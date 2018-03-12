@@ -49,6 +49,7 @@
         <div class='container-fluid h-100'>
             <div class='row'>
                 <button type="button" class="btn btn-primary btn-lg" onclick="compile()">Compile</button>
+		<a href="https://github.com/pandaman64/satysfi-playground">Source</a>
             </div>
             <div class="row h-100">
                 <div class='col'>
