@@ -25,6 +25,8 @@ use std::error::Error;
 
 use std::collections::HashMap;
 
+mod realtime;
+
 const base_path: &'static str = "tmp";
 
 #[derive(Debug)]
@@ -233,7 +235,17 @@ fn compile_handler(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![index, permalink, files, compile_handler])
+        .mount("/", routes![
+               // basic functionalities
+               index,
+               permalink,
+               files,
+               compile_handler,
+               // for realtime editing
+               realtime::get_session,
+               realtime::patch_session,
+               realtime::new_session,
+        ])
         .attach(Template::fairing())
         .launch();
 }
