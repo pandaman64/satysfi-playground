@@ -5,8 +5,9 @@ use rocket_contrib::{Json, Template, UUID};
 use std::path::PathBuf;
 use std::io::Read;
 use std::fs::File;
-use std::fmt;
-use std::error::Error;
+
+extern crate failure;
+use failure::Error;
 
 extern crate serde;
 extern crate serde_json;
@@ -23,7 +24,7 @@ struct Query {
     since_id: usize,
 }
 
-fn retrieve_server_state(id: &UUID) -> Result<Server, Box<Error>> {
+fn retrieve_server_state(id: &UUID) -> Result<Server, Error> {
     let path = PathBuf::new().join(BASE_PATH).join(id.to_string());
     let file = File::open(path)?;
     let server = serde_json::from_reader(file)?;
@@ -36,44 +37,12 @@ struct Patch {
     operation: Operation,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
 enum RealtimeError {
+    #[fail(display = "invalid operational transformation: {}", _0)] 
     OT(String),
-    RetrieveState(Box<Error>),
-}
-
-impl fmt::Display for RealtimeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use self::RealtimeError::*;
-
-        match *self {
-            OT(ref s) => write!(f, "RealtimeError::OT({})", s),
-            RetrieveState(ref e) => write!(f, "RealtimeError::RetrieveState({})", e),
-        }
-    }
-}
-
-impl Error for RealtimeError {
-    fn description(&self) -> &str {
-        use self::RealtimeError::*;
-
-        match *self {
-            OT(ref s) => s,
-            RetrieveState(ref e) => e.description(),
-        }
-    }
-
-    fn cause(&self) -> Option<&Error> {
-        None
-        /*
-        use self::RealtimeError::*;
-
-        match *self {
-            OT(_) => None,
-            RetrieveState(ref e) => Some(e), // why can't we return e as &Error?
-        }
-        */
-    }
+    #[fail(display = "error on retrieving state: {}", _0)]
+    RetrieveState(Error),
 }
 
 #[get("/realtime/<id>/patch?<query>")]
@@ -87,7 +56,7 @@ fn get_patch(id: UUID, query: Query) -> Result<Json<Patch>, RealtimeError> {
 }
 
 #[get("/realtime/<id>")]
-fn get_session(id: UUID) -> Result<Template, Box<Error>> {
+fn get_session(id: UUID) -> Result<Template, Error> {
     use self::RealtimeError::*;
 
     let server = retrieve_server_state(&id).map_err(RetrieveState)?;

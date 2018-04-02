@@ -20,8 +20,10 @@ use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 
-use std::fmt;
-use std::error::Error;
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
+use failure::Error;
 
 use std::collections::HashMap;
 
@@ -29,42 +31,19 @@ mod realtime;
 
 const base_path: &'static str = "tmp";
 
-#[derive(Debug)]
+#[derive(Debug, Fail)]
+#[fail(display = "invalid query: {}", message)]
 struct QueryError {
     message: String
 }
 
-impl QueryError {
-    fn new(message: String) -> Self {
-        QueryError { message }
-    }
-}
-
-impl fmt::Display for QueryError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("QueryError")
-            .field("message", &self.message)
-            .finish()
-    }
-}
-
-impl Error for QueryError {
-    fn description(&self) -> &str {
-        &self.message
-    }
-
-    fn cause(&self) -> Option<&Error> {
-        None
-    }
-}
-
-fn retrieve_file<'a>(id: &'a str) -> Result<String, Box<Error>> {
+fn retrieve_file<'a>(id: &'a str) -> Result<String, Error> {
     if id.len() != 64 {
-        return Err(Box::new(QueryError::new("invalid length".into())));
+        return Err(QueryError { message: "invalid length".into() }.into());
     }
     for c in id.chars() {
         if !c.is_digit(16) {
-            return Err(Box::new(QueryError::new("invalid character type".into())));
+            return Err(QueryError { message: "invalid character type".into() }.into());
         }
     }
 
@@ -163,7 +142,7 @@ struct Output {
     stderr: String,
 }
 
-fn compile(input: String) -> Result<Output, Box<Error>> {
+fn compile(input: String) -> Result<Output, Error> {
     let hash = sha2::Sha256::digest_str(&input);
     let hash = format!("{:x}", hash);
     let stdout_filename = make_input_dir(&hash).join("stdout");
@@ -229,7 +208,7 @@ fn compile(input: String) -> Result<Output, Box<Error>> {
 }
 
 #[post("/compile", format = "application/json", data = "<input>")]
-fn compile_handler(input: Json<Input>) -> Result<Json<Output>, Box<Error>> {
+fn compile_handler(input: Json<Input>) -> Result<Json<Output>, Error> {
     compile(input.content.to_string()).map(Json)
 }
 
