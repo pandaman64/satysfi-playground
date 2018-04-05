@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+        <style type="text/css" media="screen">
+            #editor { 
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: 0;
+                right: 0;
+            }
+
+            html,body {
+                height: 100%;
+            }
+        </style>
+        <title>SATySFi Playground</title>
+        <script>
+            function compile() {
+	        let stdout = document.getElementById("stdout");
+	        let stderr = document.getElementById("stderr");
+                stdout.value = "Compiling...";
+                stderr.value = "";
+                let code = {
+                    content: editor.getValue()
+                };
+                console.log(code);
+                let request = new XMLHttpRequest();
+                request.open("POST", "/compile", true);
+                request.setRequestHeader("Content-Type", "application/json");
+                request.responseType = "json";
+                request.addEventListener("load", (req, ev) => {
+                    let response = request.response;
+                    console.log(response);
+                    stdout.value = response.stdout;
+                    stderr.value = response.stderr;
+                    let pdf_container = document.getElementById("result-container");
+                    pdf_container.src = "/files/" + response.name;
+                    // history.replaceState({}, "SATySFi Playground", "http://satysfi-playground.tech/permalink/" + response.name);
+                });
+                request.send(JSON.stringify(code));
+            }
+
+            function update() {
+            }
+        </script>
+    </head>
+    <body>
+        <div class='container-fluid h-100'>
+            <div class='row'>
+                <button type="button" class="btn btn-primary btn-lg" onclick="compile()">Compile</button>
+                <button type="button" class="btn btn-primary btn-lg" onclick="update()">Update</button>
+		<a href="https://github.com/pandaman64/satysfi-playground">Source</a>
+            </div>
+            <div class="row h-100">
+                <div class='col'>
+                    <div id='editor'>{{code}}</div>
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.3.1/ace.js" type="text/javascript" charset="utf-8"></script>
+                    <script>
+                        let editor = ace.edit("editor");
+                        editor.setTheme("ace/theme/terminal");
+                        document.getElementById('editor').style.fontSize='14px';
+
+                        // 当分ASCIIだけ考えるということで
+                        let session = editor.session;
+                        session.addEventListener("change", delta => {
+                            let retain_before = [];
+                            let middle = delta.lines;
+                            let retain_after = [];
+
+                            if (delta.action === "insert") {
+                                for (let i = 0; i < session.getLength(); i++) {
+                                    let s = session.getLine(i);
+                                    if (i < delta.start.row) {
+                                        retain_before.push(s);
+                                    } else if (i > delta.end.row) {
+                                        retain_after.push(s);
+                                    } else {
+                                        // start.row <= i <= end.row
+                                        if (i === delta.start.row && i === delta.end.row) {
+                                            // start.row == i == end.row
+                                            retain_before.push(s.slice(0, delta.start.column));
+                                            retain_after.push(s.slice(delta.end.column));
+                                        } else if (i === delta.start.row) {
+                                            // start.row == i < end.row
+                                            retain_before.push(s.slice(0, delta.start.column));
+                                        }  else if (i === delta.end.row) {
+                                            // start.row < i == end.row
+                                            retain_after.push(s.slice(delta.end.column));
+                                        }
+                                    }
+                                }
+                            } else if (delta.action === "remove") {
+                                let end = false;
+
+                                for (let i = 0; i < session.getLength(); i++) {
+                                    let s = session.getLine(i);
+                                    if (end) {
+                                        retain_after.push(s);
+                                    } else if (i < delta.start.row) {
+                                        retain_before.push(s);
+                                    } else if (i === delta.start.row) {
+                                        retain_before.push(s.slice(0, delta.start.column));
+                                        retain_after.push(s.slice(delta.start.column));
+                                        end = true;
+                                    }
+                                }
+                            }
+
+                            console.log([ retain_before, middle, retain_after ]);
+                        });
+                    </script>
+                </div>
+                <div class='col'>
+                    <nav class="nav nav-tabs" role="tablist">
+                        <a class="nav-link active" href="#result-container" data-toggle="tab" role="tab">PDF</a>
+                        <a class="nav-link" href="#stdout" data-toggle="tab" role="tab">stdout</a>
+                        <a class="nav-link" href="#stderr" data-toggle="tab" role="tab">stderr</a>
+                    </nav>
+                    <div class="tab-content h-100">
+                        <iframe class="tab-pane active h-100" id="result-container" src="/files/{{pdfname}}" style="width: 100%; height: 100%" role="tabpanel"></iframe>
+                        <textarea class="tab-pane h-100" id="stdout" readonly style="width: 100%" role="tabpanel"></textarea>
+                        <textarea class="tab-pane h-100" id="stderr" readonly style="width: 100%" role="tabpanel"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+    </body>
+</html>
