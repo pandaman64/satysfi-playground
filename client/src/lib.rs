@@ -1,5 +1,8 @@
+#![feature(proc_macro)]
+
 #[macro_use]
 extern crate stdweb;
+use stdweb::js_export;
 use stdweb::web::XmlHttpRequest;
 use stdweb::web::IEventTarget;
 use stdweb::web::event::*;
@@ -9,14 +12,16 @@ extern crate failure;
 use failure::Error;
 
 extern crate futures;
-use futures::Future;
-use futures::task::Context;
+use futures::{Future, Poll, Async};
 use futures::prelude::*;
 
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
+
+#[macro_use]
+extern crate lazy_static;
 
 extern crate ot;
 use ot::*;
@@ -25,6 +30,7 @@ use ot::client::*;
 
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::ops::DerefMut;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 struct Query {
@@ -112,7 +118,7 @@ impl<T, E> Future for Subject<T, E> {
     type Item = T;
     type Error = E;
 
-    fn poll(&mut self, _cx: &mut Context) -> Result<Async<Self::Item>, Self::Error> {
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
         use SubjectInner::*;
 
         match self.0.try_borrow_mut() {
@@ -120,13 +126,13 @@ impl<T, E> Future for Subject<T, E> {
                 match std::mem::replace(&mut *this, Done) {
                     Pending => {
                         *this = Pending;
-                        Ok(Async::Pending)
+                        Ok(Async::NotReady)
                     },
                     Error(e) => Err(e),
                     Ready(s) => Ok(Async::Ready(s)),
                     Done => unreachable!(),
                 },
-            Err(_) => Ok(Async::Pending),
+            Err(_) => Ok(Async::NotReady),
         }
     }
 }
@@ -236,5 +242,43 @@ impl Connection for AjaxConnection {
             .into_future()
             .and_then(move |id| post(&format!("/realtime/{}/patch", id), &patch)))
     }
+}
+
+// TODO: allow multiple connection (is this really needed?)
+thread_local! {
+    static CONNECTION: AjaxConnection = AjaxConnection;
+}
+
+#[derive(Serialize, Deserialize)]
+struct ConnectionHandle;
+js_serializable!(ConnectionHandle);
+js_deserializable!(ConnectionHandle);
+
+thread_local! {
+    static CLIENT: RefCell<Option<Client<'static, AjaxConnection>>> = RefCell::new(None);
+}
+
+#[derive(Serialize, Deserialize)]
+struct ClientHandle;
+js_serializable!(ClientHandle);
+js_deserializable!(ClientHandle);
+
+fn new_connection() -> ConnectionHandle {
+    ConnectionHandle
+}
+
+fn new_client(connection: ConnectionHandle) -> stdweb::Promise {
+    CONNECTION.with(|connection| 
+        stdweb::Promise::from_future({
+            Client::with_connection(connection)
+                .map(|client| {
+                    CLIENT.with(|client_box| {
+                        *client_box.borrow_mut() = Some(client)
+                    });
+                    ClientHandle
+                })
+                .map_err(|e| e.to_string())
+        })
+    )
 }
 
