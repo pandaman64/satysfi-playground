@@ -140,6 +140,69 @@ impl AjaxConnection {
             _ => Err(JSError::new("cannot retrieve id of this session".into()))
         }
     }
+
+}
+
+fn get<R: serde::de::DeserializeOwned + 'static>(path: &str) -> impl Future<Item = R, Error = Error> {
+    let xhr = Rc::new(XmlHttpRequest::new());
+    let result: Subject<R, Error> = Subject::new();
+
+    {
+        let xhr_ = xhr.clone();
+        let mut result = result.clone();
+        let _handle = xhr.add_event_listener::<ResourceLoadEvent, _>(move |_| {
+            match xhr_.response_text() {
+                Ok(Some(s)) => 
+                    match serde_json::from_str::<R>(&s) {
+                        Ok(state) => result.ready(state),
+                        Err(e) => result.error(InvalidResponse::new(format!("cannot decode json: {}", e))),
+                    },
+                Ok(None) => result.error(InvalidResponse::new("response is empty".into())), 
+                Err(_) => result.error(JSError::new("XmlHttpRequest::response_text".into())),
+            };
+        });
+    }
+
+    xhr.open("GET", path)
+        .map_err(|_| JSError::new("XmlHttpRequest::open".into()))
+        .and_then(|_|
+            xhr.send()
+                .map_err(|_| JSError::new("XmlHttpRequest::send_with_string".into()))
+        ).map_err(Into::into)
+        .into_future()
+        .and_then(|_| result)
+}
+
+fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static>(path: &str, body: &T) -> impl Future<Item = R, Error = Error> {
+    let xhr = Rc::new(XmlHttpRequest::new());
+    let result: Subject<R, Error> = Subject::new();
+
+    {
+        let xhr_ = xhr.clone();
+        let mut result = result.clone();
+        let _handle = xhr.add_event_listener::<ResourceLoadEvent, _>(move |_| {
+            match xhr_.response_text() {
+                Ok(Some(s)) => 
+                    match serde_json::from_str::<R>(&s) {
+                        Ok(state) => result.ready(state),
+                        Err(e) => result.error(InvalidResponse::new(format!("cannot decode json: {}", e))),
+                    },
+                Ok(None) => result.error(InvalidResponse::new("response is empty".into())), 
+                Err(_) => result.error(JSError::new("XmlHttpRequest::response_text".into())),
+            };
+        });
+    }
+
+    xhr.open("GET", path)
+        .map_err(|_| JSError::new("XmlHttpRequest::open".into()))
+        .map_err(Into::<Error>::into)
+        .and_then(|_| serde_json::to_string(body).map_err(Into::into))
+        .and_then(|body|
+            xhr.send_with_string(&body)
+                .map_err(|_| JSError::new("XmlHttpRequest::send_with_string".into()).into())
+        )
+        .into_future()
+        .and_then(|_| result)
 }
 
 impl Connection for AjaxConnection {
@@ -148,50 +211,30 @@ impl Connection for AjaxConnection {
     type StateFuture = Box<Future<Item = State, Error = Self::Error>>;
 
     fn get_latest_state(&self) -> Self::StateFuture {
-        let xhr = Rc::new(XmlHttpRequest::new());
-        let result: Subject<State, Error> = Subject::new();
-
-        {
-            let xhr_ = xhr.clone();
-            let mut result = result.clone();
-            let _handle = xhr.add_event_listener::<ResourceLoadEvent, _>(move |_| {
-                match xhr_.response_text() {
-                    Ok(Some(s)) => 
-                        match serde_json::from_str::<State>(&s) {
-                            Ok(state) => result.ready(state),
-                            Err(e) => result.error(InvalidResponse::new(format!("cannot decode json: {}", e))),
-                        },
-                    Ok(None) => result.error(InvalidResponse::new("response is empty".into())), 
-                    Err(_) => result.error(JSError::new("XmlHttpRequest::response_text".into())),
-                };
-            });
-        }
-
-
-        let id = self.retrieve_id();
-        Box::new(id.and_then(|id| 
-            xhr.open("GET", &format!("/realtime/{}", id))
-                .map_err(|_| JSError::new("XmlHttpRequest::open".into()))
-                .and_then(|_| 
-                    xhr.set_request_header("Content-Type", "application/json")
-                        .map_err(|_| JSError::new("XmlHttpRequest::set_request_header".into()))
-                ).and_then(|_|
-                    xhr.send()
-                        .map_err(|_| JSError::new("XmlHttpRequest::send_with_string".into()))
-                ).map_err(Into::into)
-            )
+        Box::new(self.retrieve_id()
             .map_err(Into::into)
             .into_future()
-            .and_then(|_| result))
+            .and_then(move |id| get(&format!("/realtime/{}", id))))
     }
 
     fn get_patch_since(&self, since_id: &Id) -> Self::Output {
-        // "/realtime/<session_id>/patch?since_id=<id>"
-        unimplemented!()
+        let since_id = since_id.0;
+        Box::new(self.retrieve_id()
+            .map_err(Into::into)
+            .into_future()
+            .and_then(move |id| get(&format!("/realtime/{}/patch?since_id={}", id, since_id))))
     }
 
     fn send_operation(&self, base_id: Id, operation: Operation) -> Self::Output {
-        unimplemented!()
+        let patch = Patch {
+            id: base_id,
+            operation: operation,
+        };
+
+        Box::new(self.retrieve_id()
+            .map_err(Into::into)
+            .into_future()
+            .and_then(move |id| post(&format!("/realtime/{}/patch", id), &patch)))
     }
 }
 
