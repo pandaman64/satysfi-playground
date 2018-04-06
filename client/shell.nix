@@ -22,7 +22,9 @@ stdenv.mkDerivation {
     if ! type wasm-bindgen > /dev/null 2> /dev/null; then
       cargo install wasm-bindgen-cli --root "$PWD/.cargo"
     fi
-    cargo install cargo-web --root "$PWD/.cargo"
+    if ! type cargo-web > /dev/null 2> /dev/null; then
+      cargo install cargo-web --root "$PWD/.cargo"
+    fi
   '';
 }
 

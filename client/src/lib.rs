@@ -2,10 +2,11 @@
 
 #[macro_use]
 extern crate stdweb;
-use stdweb::js_export;
 use stdweb::web::XmlHttpRequest;
 use stdweb::web::IEventTarget;
 use stdweb::web::event::*;
+use stdweb::js_export;
+use stdweb::Promise;
 
 #[macro_use]
 extern crate failure;
@@ -38,6 +39,8 @@ struct Patch {
     id: Id,
     operation: Operation,
 }
+js_serializable!(Patch);
+js_deserializable!(Patch);
 
 #[derive(Debug, Fail)]
 #[fail(display = "Error inside JS: {}", message)]
@@ -208,8 +211,18 @@ fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static>(
         .and_then(|_| result)
 }
 
+#[derive(Debug, Fail)]
+#[fail(display = "Error on ajax connection: {}", _0)]
+struct AjaxConnectionError(Error);
+
+impl From<Error> for AjaxConnectionError {
+    fn from(e: Error) -> Self {
+        AjaxConnectionError(e)
+    }
+}
+
 impl Connection for AjaxConnection {
-    type Error = Error;
+    type Error = AjaxConnectionError;
     type Output = Box<Future<Item = (Id, Operation), Error = Self::Error>>;
     type StateFuture = Box<Future<Item = State, Error = Self::Error>>;
 
@@ -217,7 +230,8 @@ impl Connection for AjaxConnection {
         Box::new(self.retrieve_id()
             .map_err(Into::into)
             .into_future()
-            .and_then(move |id| get(&format!("/realtime/{}", id))))
+            .and_then(move |id| get(&format!("/realtime/{}", id)))
+            .map_err(Into::into))
     }
 
     fn get_patch_since(&self, since_id: &Id) -> Self::Output {
@@ -225,7 +239,8 @@ impl Connection for AjaxConnection {
         Box::new(self.retrieve_id()
             .map_err(Into::into)
             .into_future()
-            .and_then(move |id| get(&format!("/realtime/{}/patch?since_id={}", id, since_id))))
+            .and_then(move |id| get(&format!("/realtime/{}/patch?since_id={}", id, since_id)))
+            .map_err(Into::into))
     }
 
     fn send_operation(&self, base_id: Id, operation: Operation) -> Self::Output {
@@ -235,9 +250,11 @@ impl Connection for AjaxConnection {
         };
 
         Box::new(self.retrieve_id()
+            .map_err(Into::<Error>::into)
             .map_err(Into::into)
             .into_future()
-            .and_then(move |id| post(&format!("/realtime/{}/patch", id), &patch)))
+            .and_then(move |id| post(&format!("/realtime/{}/patch", id), &patch))
+            .map_err(Into::into))
     }
 }
 
@@ -260,14 +277,68 @@ struct ClientHandle;
 js_serializable!(ClientHandle);
 js_deserializable!(ClientHandle);
 
+#[derive(Serialize, Deserialize)]
+struct OperationHandle(usize);
+js_serializable!(OperationHandle);
+js_deserializable!(OperationHandle);
+
+thread_local! {
+    static OPERATIONS: RefCell<Vec<Operation>> = RefCell::new(vec![]);
+}
+
+#[js_export]
+fn retain(operation: OperationHandle, len: usize) {
+    OPERATIONS.with(|operations| {
+        let mut operations = operations.borrow_mut();
+        if operation.0 < operations.len() {
+            operations[operation.0].retain(len);
+        } else {
+            unreachable!()
+        }
+    })
+}
+
+#[js_export]
+fn insert(operation: OperationHandle, s: String) {
+    OPERATIONS.with(|operations| {
+        let mut operations = operations.borrow_mut();
+        if operation.0 < operations.len() {
+            operations[operation.0].insert(s);
+        } else {
+            unreachable!()
+        }
+    })
+}
+
+#[js_export]
+fn delete(operation: OperationHandle, len: usize) {
+    OPERATIONS.with(|operations| {
+        let mut operations = operations.borrow_mut();
+        if operation.0 < operations.len() {
+            operations[operation.0].delete(len);
+        } else {
+            unreachable!()
+        }
+    })
+}
+
+thread_local! {
+    static OUTPUTFUTURES: RefCell<Vec<Option<<AjaxConnection as Connection>::Output>>> = RefCell::new(vec![]);
+}
+
+#[derive(Serialize, Deserialize)]
+struct OutputFutureHandle(usize);
+js_serializable!(OutputFutureHandle);
+js_deserializable!(OutputFutureHandle);
+
 #[js_export]
 fn get_connection() -> ConnectionHandle {
     ConnectionHandle
 }
 
 #[js_export]
-fn get_client(_connection: ConnectionHandle) -> stdweb::Promise {
-    stdweb::Promise::from_future({
+fn get_client(_connection: ConnectionHandle) -> Promise {
+    Promise::from_future({
         CONNECTION.with(|connection| 
             Client::with_connection(*connection)
                 .map(|client| {
@@ -281,3 +352,81 @@ fn get_client(_connection: ConnectionHandle) -> stdweb::Promise {
     })
 }
 
+#[js_export]
+fn current_content(_client: ClientHandle) -> stdweb::Value {
+    CLIENT.with(|client| 
+        match client.borrow().as_ref().unwrap().current_content() {
+            Ok(c) => stdweb::Value::String(c),
+            // TODO: log error or pass
+            Err(_) => stdweb::Value::Null,
+        }
+    )
+}
+
+#[js_export]
+fn push_operation(_client: ClientHandle, operation: OperationHandle) {
+    CLIENT.with(|client| 
+        OPERATIONS.with(|operations| {
+            let operation = operations.borrow()[operation.0].clone();
+            client.borrow_mut().as_mut().unwrap().push_operation(operation);
+        })
+    )
+}
+
+#[js_export]
+fn send_to_server(_client: ClientHandle) -> Option<OutputFutureHandle> {
+    CLIENT.with(|client| 
+        match client.borrow_mut().as_mut().unwrap().send_to_server() {
+            Ok(f) => {
+                OUTPUTFUTURES.with(|output_futures| {
+                    let mut output_futures = output_futures.borrow_mut();
+                    let handle = OutputFutureHandle(output_futures.len());
+                    output_futures.push(Some(f));
+                    Some(handle)
+                })
+            },
+            // TODO: log error or pass
+            Err(_) => None 
+        }
+    )
+}
+
+/// if return value is non-null, this indicates the operation is not successful
+#[js_export]
+fn apply_response(_client: ClientHandle, patch: Patch) -> stdweb::Value {
+    CLIENT.with(|client| {
+        let mut client = client.borrow_mut();
+        let client = client.as_mut().unwrap();
+        match client.apply_response(patch.id, patch.operation) {
+            Ok(()) => stdweb::Value::Null,
+            Err(e) => stdweb::Value::String(e.to_string()),
+        }
+    })
+}
+
+#[js_export]
+fn send_get_patch(_client: ClientHandle) -> OutputFutureHandle {
+    CLIENT.with(|client| {
+        let client = client.borrow();
+        let client = client.as_ref().unwrap();
+        OUTPUTFUTURES.with(|output_futures| {
+            let mut output_futures = output_futures.borrow_mut();
+            let handle = OutputFutureHandle(output_futures.len());
+            output_futures.push(Some(Box::new(client.send_get_patch().map_err(Into::<Error>::into).map_err(Into::into))));
+            handle
+        })
+    })
+}
+
+/// if return value is non-null, this indicates the operation is not successful
+#[js_export]
+fn apply_patch(_client: ClientHandle, patch: Patch) -> stdweb::Value {
+    CLIENT.with(|client| {
+        let mut client = client.borrow_mut();
+        let client = client.as_mut().unwrap();
+        match client.apply_patch(patch.id, patch.operation) {
+            Ok(()) => stdweb::Value::Null,
+            Err(e) => stdweb::Value::String(e.to_string())
+        }
+    })
+}
