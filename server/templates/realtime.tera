@@ -47,6 +47,11 @@
             function update() {
             }
         </script>
+        <script>
+            function retrieve_id() {
+                return {{id}};
+            }
+        </script>
     </head>
     <body>
         <div class='container-fluid h-100'>

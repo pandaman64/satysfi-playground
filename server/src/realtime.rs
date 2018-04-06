@@ -3,7 +3,6 @@ extern crate rocket_contrib;
 use rocket_contrib::{Json, Template, UUID};
 
 use std::path::PathBuf;
-use std::io::Read;
 use std::fs::File;
 
 extern crate failure;
