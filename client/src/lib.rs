@@ -267,17 +267,17 @@ fn get_connection() -> ConnectionHandle {
 
 #[js_export]
 fn get_client(_connection: ConnectionHandle) -> stdweb::Promise {
-        stdweb::Promise::from_future({
-            CONNECTION.with(|connection| 
-                Client::with_connection(*connection)
-                    .map(|client| {
-                        CLIENT.with(|client_box| {
-                            *client_box.borrow_mut() = Some(client)
-                        });
-                        ClientHandle
-                    })
-                    .map_err(|e| e.to_string())
-            )
-        })
+    stdweb::Promise::from_future({
+        CONNECTION.with(|connection| 
+            Client::with_connection(*connection)
+                .map(|client| {
+                    CLIENT.with(|client_box| {
+                        *client_box.borrow_mut() = Some(client)
+                    });
+                    ClientHandle
+                })
+                .map_err(|e| e.to_string())
+        )
+    })
 }
 
