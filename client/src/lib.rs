@@ -20,9 +20,6 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-#[macro_use]
-extern crate lazy_static;
-
 extern crate ot;
 use ot::*;
 use ot::util::*;
@@ -30,7 +27,6 @@ use ot::client::*;
 
 use std::rc::Rc;
 use std::cell::RefCell;
-use std::ops::DerefMut;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 struct Query {
@@ -137,6 +133,7 @@ impl<T, E> Future for Subject<T, E> {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
 struct AjaxConnection;
 
 impl AjaxConnection {
@@ -255,7 +252,7 @@ js_serializable!(ConnectionHandle);
 js_deserializable!(ConnectionHandle);
 
 thread_local! {
-    static CLIENT: RefCell<Option<Client<'static, AjaxConnection>>> = RefCell::new(None);
+    static CLIENT: RefCell<Option<Client<AjaxConnection>>> = RefCell::new(None);
 }
 
 #[derive(Serialize, Deserialize)]
@@ -263,22 +260,24 @@ struct ClientHandle;
 js_serializable!(ClientHandle);
 js_deserializable!(ClientHandle);
 
-fn new_connection() -> ConnectionHandle {
+#[js_export]
+fn get_connection() -> ConnectionHandle {
     ConnectionHandle
 }
 
-fn new_client(connection: ConnectionHandle) -> stdweb::Promise {
-    CONNECTION.with(|connection| 
+#[js_export]
+fn get_client(_connection: ConnectionHandle) -> stdweb::Promise {
         stdweb::Promise::from_future({
-            Client::with_connection(connection)
-                .map(|client| {
-                    CLIENT.with(|client_box| {
-                        *client_box.borrow_mut() = Some(client)
-                    });
-                    ClientHandle
-                })
-                .map_err(|e| e.to_string())
+            CONNECTION.with(|connection| 
+                Client::with_connection(*connection)
+                    .map(|client| {
+                        CLIENT.with(|client_box| {
+                            *client_box.borrow_mut() = Some(client)
+                        });
+                        ClientHandle
+                    })
+                    .map_err(|e| e.to_string())
+            )
         })
-    )
 }
 
