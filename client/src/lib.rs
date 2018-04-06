@@ -80,7 +80,7 @@ struct Subject<T, E>(Rc<RefCell<SubjectInner<T, E>>>);
 
 impl<T, E> std::clone::Clone for Subject<T, E> {
     fn clone(&self) -> Self {
-        Subject(self.0.clone())
+        Subject(Rc::clone(&self.0))
     }
 }
 
@@ -151,7 +151,7 @@ fn get<R: serde::de::DeserializeOwned + 'static>(path: &str) -> impl Future<Item
     let result: Subject<R, Error> = Subject::new();
 
     {
-        let xhr_ = xhr.clone();
+        let xhr_ = Rc::clone(&xhr);
         let mut result = result.clone();
         let _handle = xhr.add_event_listener::<ResourceLoadEvent, _>(move |_| {
             match xhr_.response_text() {
@@ -181,7 +181,7 @@ fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static>(
     let result: Subject<R, Error> = Subject::new();
 
     {
-        let xhr_ = xhr.clone();
+        let xhr_ = Rc::clone(&xhr);
         let mut result = result.clone();
         let _handle = xhr.add_event_listener::<ResourceLoadEvent, _>(move |_| {
             match xhr_.response_text() {
