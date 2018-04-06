@@ -322,15 +322,6 @@ fn delete(operation: OperationHandle, len: usize) {
     })
 }
 
-thread_local! {
-    static OUTPUTFUTURES: RefCell<Vec<Option<<AjaxConnection as Connection>::Output>>> = RefCell::new(vec![]);
-}
-
-#[derive(Serialize, Deserialize)]
-struct OutputFutureHandle(usize);
-js_serializable!(OutputFutureHandle);
-js_deserializable!(OutputFutureHandle);
-
 #[js_export]
 fn get_connection() -> ConnectionHandle {
     ConnectionHandle
@@ -374,16 +365,13 @@ fn push_operation(_client: ClientHandle, operation: OperationHandle) {
 }
 
 #[js_export]
-fn send_to_server(_client: ClientHandle) -> Option<OutputFutureHandle> {
+fn send_to_server(_client: ClientHandle) -> Option<Promise> {
     CLIENT.with(|client| 
         match client.borrow_mut().as_mut().unwrap().send_to_server() {
             Ok(f) => {
-                OUTPUTFUTURES.with(|output_futures| {
-                    let mut output_futures = output_futures.borrow_mut();
-                    let handle = OutputFutureHandle(output_futures.len());
-                    output_futures.push(Some(f));
-                    Some(handle)
-                })
+                Some(Promise::from_future(f
+                    .map(|(id, operation)| Patch { id, operation })
+                    .map_err(|e| e.to_string())))
             },
             // TODO: log error or pass
             Err(_) => None 
@@ -405,16 +393,13 @@ fn apply_response(_client: ClientHandle, patch: Patch) -> stdweb::Value {
 }
 
 #[js_export]
-fn send_get_patch(_client: ClientHandle) -> OutputFutureHandle {
+fn send_get_patch(_client: ClientHandle) -> Promise {
     CLIENT.with(|client| {
         let client = client.borrow();
         let client = client.as_ref().unwrap();
-        OUTPUTFUTURES.with(|output_futures| {
-            let mut output_futures = output_futures.borrow_mut();
-            let handle = OutputFutureHandle(output_futures.len());
-            output_futures.push(Some(Box::new(client.send_get_patch().map_err(Into::<Error>::into).map_err(Into::into))));
-            handle
-        })
+        Promise::from_future(client.send_get_patch()
+            .map(|(id, operation)| Patch { id, operation })
+            .map_err(|e| e.to_string()))
     })
 }
 
@@ -430,3 +415,4 @@ fn apply_patch(_client: ClientHandle, patch: Patch) -> stdweb::Value {
         }
     })
 }
+
