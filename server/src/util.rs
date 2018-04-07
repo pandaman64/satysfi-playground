@@ -76,9 +76,11 @@ pub struct Output {
     pub stderr: String,
 }
 
-pub fn compile(input: String) -> Result<Output, Error> {
-    let hash = sha2::Sha256::digest_str(&input);
-    let hash = format!("{:x}", hash);
+#[derive(Debug, Fail)]
+#[fail(display = "Cache not found")]
+struct CacheNotFound;
+
+fn cache(hash: &str) -> Result<Output, Error> {
     let stdout_filename = make_input_dir(&hash).join("stdout");
     let stderr_filename = make_input_dir(&hash).join("stderr");
 
@@ -91,12 +93,25 @@ pub fn compile(input: String) -> Result<Output, Error> {
         stdout_file.read_to_string(&mut stdout)?;
         stderr_file.read_to_string(&mut stderr)?;
 
-        return Ok(Output{
-            name: hash,
+        Ok(Output{
+            name: hash.into(),
             success: true,
             stdout: stdout,
             stderr: stderr,
         })
+    } else {
+        Err(CacheNotFound.into())
+    }
+}
+
+pub fn compile(input: String) -> Result<Output, Error> {
+    let hash = sha2::Sha256::digest_str(&input);
+    let hash = format!("{:x}", hash);
+    let stdout_filename = make_input_dir(&hash).join("stdout");
+    let stderr_filename = make_input_dir(&hash).join("stderr");
+
+    if let Ok(output) = cache(&hash) {
+        return Ok(output);
     }
 
     use std::fs::create_dir_all;
@@ -107,9 +122,9 @@ pub fn compile(input: String) -> Result<Output, Error> {
     let mut input_file = File::create(&input_file_name)?;
     input_file.write_all(input.as_bytes())?;
 
-    let child = Command::new("run.sh")
+    let child = Command::new("./run.sh")
         .args(&[&input_file_name, &make_output_path(&hash)])
-        .env_clear()
+        //.env_clear()
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
