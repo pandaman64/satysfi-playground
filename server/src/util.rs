@@ -2,6 +2,7 @@ use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::io::{Read, Write};
 use std::process::{Command, Stdio};
+use std::collections::HashMap;
 
 extern crate failure;
 use failure::Error;
@@ -10,6 +11,42 @@ extern crate sha2;
 use sha2::Digest;
 
 const BASE_PATH: &'static str = "tmp";
+
+#[derive(Debug, Fail)]
+#[fail(display = "invalid query: {}", message)]
+struct QueryError {
+    message: String
+}
+
+fn retrieve_file<'a>(id: &'a str) -> Result<String, Error> {
+    if id.len() != 64 {
+        return Err(QueryError { message: "invalid length".into() }.into());
+    }
+    for c in id.chars() {
+        if !c.is_digit(16) {
+            return Err(QueryError { message: "invalid character type".into() }.into());
+        }
+    }
+
+    let mut input_file = File::open(make_input_path(id))?;
+    let mut content = String::new();
+    input_file.read_to_string(&mut content)?;
+    Ok(content)
+}
+
+pub fn create_context(query: String, default_code: String, default_pdf: String) -> HashMap<&'static str, String> {
+    if let Ok(s) = retrieve_file(&query) {
+        let mut ret = HashMap::new();
+        ret.insert("code", s);
+        ret.insert("pdfname", query);
+        return ret;
+    }
+
+    let mut ret = HashMap::new();
+    ret.insert("code", default_code);
+    ret.insert("pdfname", default_pdf);
+    ret
+}
 
 pub fn make_input_dir<P: AsRef<Path>>(hash: P) -> PathBuf {
     Path::new(BASE_PATH).join(hash).join("input")

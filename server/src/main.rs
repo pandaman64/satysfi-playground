@@ -21,44 +21,11 @@ extern crate sha2;
 extern crate failure;
 use failure::Error;
 
-use std::collections::HashMap;
-
 mod realtime;
 mod util;
 use util::*;
 
-#[derive(Debug, Fail)]
-#[fail(display = "invalid query: {}", message)]
-struct QueryError {
-    message: String
-}
-
-fn retrieve_file<'a>(id: &'a str) -> Result<String, Error> {
-    if id.len() != 64 {
-        return Err(QueryError { message: "invalid length".into() }.into());
-    }
-    for c in id.chars() {
-        if !c.is_digit(16) {
-            return Err(QueryError { message: "invalid character type".into() }.into());
-        }
-    }
-
-    let mut input_file = File::open(make_input_path(id))?;
-    let mut content = String::new();
-    input_file.read_to_string(&mut content)?;
-    Ok(content)
-}
-
-fn create_context(query: String) -> HashMap<&'static str, String> {
-    if let Ok(s) = retrieve_file(&query) {
-        let mut ret = HashMap::new();
-        ret.insert("code", s);
-        ret.insert("pdfname", query);
-        return ret;
-    }
-
-    let mut ret = HashMap::new();
-    ret.insert("code", "@require: stdjabook
+const DEFAULT_CODE: &'static str = "@require: stdjabook
 
 document (|
   title = {\\SATySFi;概説};
@@ -67,19 +34,18 @@ document (|
   show-toc = false;
 |) '<
     +p { Hello, \\SATySFi; Playground! }
->".to_string());
-    ret.insert("pdfname", "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string());
-    ret
-}
+>";
+
+const DEFAULT_PDF: &'static str = "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
 
 #[get("/permalink/<query>")]
 fn permalink(query: String) -> Template {
-    Template::render("index", &create_context(query))
+    Template::render("index", &create_context(query, DEFAULT_CODE.into(), DEFAULT_PDF.into()))
 }
 
 #[get("/")]
 fn index() -> Template {
-    Template::render("index", &create_context("9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string()))
+    Template::render("index", &create_context("9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string(), DEFAULT_CODE.into(), DEFAULT_PDF.into()))
 }
 
 use rocket::response;
@@ -124,6 +90,7 @@ fn main() {
                compile_handler,
                // for realtime editing
                realtime::get_session,
+               realtime::get_patch,
                realtime::patch_session,
                realtime::new_session,
         ])
