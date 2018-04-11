@@ -19,6 +19,10 @@ ot = { git = "https://github.com/pandaman64/ot.git" }
 failure = "0.1.1"
 failure_derive = "0.1.1"
 
+uuid = { version = "0.6.2", features = ["v4"] }
+
+lazy_static = "1.0"
+
 [dependencies.rocket_contrib]
 version = "*"
 default-features = false

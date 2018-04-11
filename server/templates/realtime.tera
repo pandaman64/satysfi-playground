@@ -49,7 +49,7 @@
         </script>
         <script>
             function retrieve_id() {
-                return {{id}};
+                return "{{id}}";
             }
         </script>
     </head>

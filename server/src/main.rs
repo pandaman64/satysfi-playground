@@ -4,6 +4,9 @@
 #[macro_use]
 extern crate serde_derive;
 
+#[macro_use]
+extern crate lazy_static;
+
 extern crate rocket;
 use rocket::response::NamedFile;
 use std::path::PathBuf;
