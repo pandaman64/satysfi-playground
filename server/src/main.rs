@@ -51,6 +51,13 @@ fn index() -> Template {
     Template::render("index", &create_context("9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string(), DEFAULT_CODE.into(), DEFAULT_PDF.into()))
 }
 
+// for non-pdf files
+#[get("/<path..>", rank = 2)]
+fn assets(path: PathBuf) -> Option<NamedFile> {
+    let path = PathBuf::new().join("assets").join(path);
+    NamedFile::open(path).ok()
+}
+
 use rocket::response;
 // https://github.com/SergioBenitez/Rocket/issues/95#issuecomment-354824883
 struct CachedFile(NamedFile);
@@ -88,6 +95,7 @@ fn main() {
         .mount("/", routes![
                // basic functionalities
                index,
+               assets,
                permalink,
                files,
                compile_handler,
