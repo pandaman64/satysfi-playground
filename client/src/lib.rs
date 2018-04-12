@@ -299,6 +299,11 @@ fn retain(operation: OperationHandle, len: usize) {
 }
 
 #[js_export]
+fn retain_str(operation: OperationHandle, s: &str) {
+    retain(operation, s.len())
+}
+
+#[js_export]
 fn insert(operation: OperationHandle, s: String) {
     OPERATIONS.with(|operations| {
         let mut operations = operations.borrow_mut();
@@ -320,6 +325,11 @@ fn delete(operation: OperationHandle, len: usize) {
             unreachable!()
         }
     })
+}
+
+#[js_export]
+fn delete_str(operation: OperationHandle, s: &str) {
+    delete(operation, s.len())
 }
 
 #[js_export]
