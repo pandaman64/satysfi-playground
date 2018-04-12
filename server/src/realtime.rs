@@ -159,12 +159,20 @@ document (|
 
 const DEFAULT_PDF: &'static str = "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
 
-#[derive(Deserialize)]
-struct PatchResult;
-
 #[patch("/realtime/<id>", format = "application/json", data = "<patch>")]
-fn patch_session(id: UUID, patch: Json<Patch>) -> String {
-    unimplemented!()
+fn patch_session(id: UUID, patch: Json<Patch>) -> Result<Json<Patch>, RealtimeError> {
+    use realtime::RealtimeError::*;
+
+    let mut pool = SERVER_POOL
+        .write()
+        .unwrap();
+    let server = pool.get_mut(&id)
+        .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
+    let patch = patch.into_inner();
+    
+    server.modify(patch.id, patch.operation)
+        .map(|(id, operation)| Json(Patch { id, operation }))
+        .map_err(|e| OT(e))
 }
 
 #[get("/realtime/new")]
