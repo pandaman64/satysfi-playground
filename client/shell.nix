@@ -7,7 +7,8 @@ stdenv.mkDerivation {
     bashInteractive
 
     # rust environment
-    (latest.rustChannels.nightly.rust.override { targets = [ "wasm32-unknown-unknown" ]; })
+    # (latest.rustChannels.nightly.rust.override { targets = [ "wasm32-unknown-unknown" ]; })
+    ((rustChannelOf { date = "2018-04-12"; }).rust.override { targets = [ "wasm32-unknown-unknown" ]; })
 
     # openssl dev for cargo-web
     openssl
