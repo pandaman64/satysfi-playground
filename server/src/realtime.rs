@@ -10,18 +10,18 @@ extern crate serde;
 extern crate serde_json;
 
 extern crate ot;
+use realtime::ot::Operation;
 use realtime::ot::server::Server;
 use realtime::ot::util::Id;
-use realtime::ot::Operation;
 
 extern crate uuid;
 use realtime::uuid::Uuid;
 
-use std::path::{Path, PathBuf};
-use std::io;
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
-use std::collections::HashMap;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
 const BASE_PATH: &'static str = "tmp/realtime";
@@ -60,15 +60,13 @@ impl ServerPool {
                 match ServerPool::retrieve_from_entry(entry) {
                     Ok((id, data)) => {
                         servers.insert(id, data);
-                    },
+                    }
                     Err(e) => println!("from_directory: {}", e), // this should be debug! or something like it
-                }                
+                }
             }
         }
 
-        ServerPool {
-            servers
-        }
+        ServerPool { servers }
     }
 
     fn get_data(&self, id: &Uuid) -> Option<&ServerData> {
@@ -110,7 +108,7 @@ struct Patch {
 
 #[derive(Debug, Fail)]
 enum RealtimeError {
-    #[fail(display = "invalid operational transformation: {}", _0)] 
+    #[fail(display = "invalid operational transformation: {}", _0)]
     OT(String),
     #[fail(display = "Server with given id not found: {}", _0)]
     ServerNotFound(String),
@@ -121,8 +119,7 @@ fn get_patch(id: UUID, query: Query) -> Result<Json<Patch>, RealtimeError> {
     use self::RealtimeError::*;
 
     let pool = SERVER_POOL.read().unwrap();
-    let server_data = pool
-        .get(&id)
+    let server_data = pool.get(&id)
         .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
     server_data
         .get_patch(&Id(query.since_id))
@@ -134,18 +131,15 @@ fn get_patch(id: UUID, query: Query) -> Result<Json<Patch>, RealtimeError> {
 fn get_session(id: UUID) -> Result<Template, Error> {
     use self::RealtimeError::*;
 
-    let pool = SERVER_POOL
-        .read()
-        .unwrap();
-    let data = pool
-        .get_data(&id)
+    let pool = SERVER_POOL.read().unwrap();
+    let data = pool.get_data(&id)
         .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
 
     let state = data.server.current_state();
 
     let mut ctx = HashMap::new();
-    ctx.insert("code", state.content.clone()); 
-    ctx.insert("pdfname", data.latest_pdf_name.clone()); 
+    ctx.insert("code", state.content.clone());
+    ctx.insert("pdfname", data.latest_pdf_name.clone());
     ctx.insert("id", id.hyphenated().to_string());
 
     Ok(Template::render("realtime", &ctx))
@@ -162,20 +156,20 @@ document (|
     +p { Hello, \\SATySFi; Playground! }
 >";
 
-const DEFAULT_PDF: &'static str = "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
+const DEFAULT_PDF: &'static str =
+    "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
 
 #[patch("/realtime/<id>", format = "application/json", data = "<patch>")]
 fn patch_session(id: UUID, patch: Json<Patch>) -> Result<Json<Patch>, RealtimeError> {
     use realtime::RealtimeError::*;
 
-    let mut pool = SERVER_POOL
-        .write()
-        .unwrap();
+    let mut pool = SERVER_POOL.write().unwrap();
     let server = pool.get_mut(&id)
         .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
     let patch = patch.into_inner();
-    
-    server.modify(patch.id, patch.operation)
+
+    server
+        .modify(patch.id, patch.operation)
         .map(|(id, operation)| Json(Patch { id, operation }))
         .map_err(|e| OT(e))
 }
@@ -194,14 +188,15 @@ fn new_session() -> Result<Redirect, Error> {
         server.modify(initial_id, op).unwrap();
         server
     };
-    
-    let mut pool = SERVER_POOL
-        .write()
-        .unwrap();
-    pool.insert(id, ServerData { 
-        latest_pdf_name: DEFAULT_PDF.into(),
-        server
-    });
+
+    let mut pool = SERVER_POOL.write().unwrap();
+    pool.insert(
+        id,
+        ServerData {
+            latest_pdf_name: DEFAULT_PDF.into(),
+            server,
+        },
+    );
     pool.sync();
 
     let id = id.hyphenated().to_string();
@@ -209,4 +204,3 @@ fn new_session() -> Result<Redirect, Error> {
 
     Ok(Redirect::to(&redirect_url))
 }
-

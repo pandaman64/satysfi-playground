@@ -39,16 +39,27 @@ document (|
     +p { Hello, \\SATySFi; Playground! }
 >";
 
-const DEFAULT_PDF: &'static str = "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
+const DEFAULT_PDF: &'static str =
+    "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
 
 #[get("/permalink/<query>")]
 fn permalink(query: String) -> Template {
-    Template::render("index", &create_context(query, DEFAULT_CODE.into(), DEFAULT_PDF.into()))
+    Template::render(
+        "index",
+        &create_context(query, DEFAULT_CODE.into(), DEFAULT_PDF.into()),
+    )
 }
 
 #[get("/")]
 fn index() -> Template {
-    Template::render("index", &create_context("9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string(), DEFAULT_CODE.into(), DEFAULT_PDF.into()))
+    Template::render(
+        "index",
+        &create_context(
+            "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string(),
+            DEFAULT_CODE.into(),
+            DEFAULT_PDF.into(),
+        ),
+    )
 }
 
 // for non-pdf files
@@ -75,13 +86,13 @@ fn files(hash: PathBuf) -> Option<CachedFile> {
     match NamedFile::open(make_output_path(&hash)) {
         Ok(file) => Some(file),
         _ => File::open(make_input_path(&hash))
-                .ok()
-                .and_then(|mut f| {
-                    let mut content = String::new();
-                    f.read_to_string(&mut content).ok()?;
-                    compile(content).ok()
-                })
-                .and_then(|output| NamedFile::open(output.name).ok())
+            .ok()
+            .and_then(|mut f| {
+                let mut content = String::new();
+                f.read_to_string(&mut content).ok()?;
+                compile(content).ok()
+            })
+            .and_then(|output| NamedFile::open(output.name).ok()),
     }.map(CachedFile)
 }
 
@@ -92,19 +103,22 @@ fn compile_handler(input: Json<Input>) -> Result<Json<Output>, Error> {
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![
-               // basic functionalities
-               index,
-               assets,
-               permalink,
-               files,
-               compile_handler,
-               // for realtime editing
-               realtime::get_session,
-               realtime::get_patch,
-               realtime::patch_session,
-               realtime::new_session,
-        ])
+        .mount(
+            "/",
+            routes![
+                // basic functionalities
+                index,
+                assets,
+                permalink,
+                files,
+                compile_handler,
+                // for realtime editing
+                realtime::get_session,
+                realtime::get_patch,
+                realtime::patch_session,
+                realtime::new_session,
+            ],
+        )
         .attach(Template::fairing())
         .launch();
 }

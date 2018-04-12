@@ -1,8 +1,8 @@
-use std::fs::File;
-use std::path::{Path, PathBuf};
-use std::io::{Read, Write};
-use std::process::{Command, Stdio};
 use std::collections::HashMap;
+use std::fs::File;
+use std::io::{Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 
 extern crate failure;
 use failure::Error;
@@ -15,16 +15,20 @@ const BASE_PATH: &'static str = "tmp";
 #[derive(Debug, Fail)]
 #[fail(display = "invalid query: {}", message)]
 struct QueryError {
-    message: String
+    message: String,
 }
 
 fn retrieve_file<'a>(id: &'a str) -> Result<String, Error> {
     if id.len() != 64 {
-        return Err(QueryError { message: "invalid length".into() }.into());
+        return Err(QueryError {
+            message: "invalid length".into(),
+        }.into());
     }
     for c in id.chars() {
         if !c.is_digit(16) {
-            return Err(QueryError { message: "invalid character type".into() }.into());
+            return Err(QueryError {
+                message: "invalid character type".into(),
+            }.into());
         }
     }
 
@@ -34,7 +38,11 @@ fn retrieve_file<'a>(id: &'a str) -> Result<String, Error> {
     Ok(content)
 }
 
-pub fn create_context(query: String, default_code: String, default_pdf: String) -> HashMap<&'static str, String> {
+pub fn create_context(
+    query: String,
+    default_code: String,
+    default_pdf: String,
+) -> HashMap<&'static str, String> {
     if let Ok(s) = retrieve_file(&query) {
         let mut ret = HashMap::new();
         ret.insert("code", s);
@@ -93,7 +101,7 @@ fn cache(hash: &str) -> Result<Output, Error> {
         stdout_file.read_to_string(&mut stdout)?;
         stderr_file.read_to_string(&mut stderr)?;
 
-        Ok(Output{
+        Ok(Output {
             name: hash.into(),
             success: true,
             stdout: stdout,
@@ -141,8 +149,8 @@ pub fn compile(input: String) -> Result<Output, Error> {
         stdout_file.write_all(stdout.as_bytes())?;
         stderr_file.write_all(stderr.as_bytes())?;
     }
-    
-    Ok(Output{
+
+    Ok(Output {
         name: hash,
         success: output.status.success(),
         stdout: stdout,
