@@ -163,15 +163,23 @@ const DEFAULT_PDF: &'static str =
 fn patch_session(id: UUID, patch: Json<Patch>) -> Result<Json<Patch>, RealtimeError> {
     use realtime::RealtimeError::*;
 
-    let mut pool = SERVER_POOL.write().unwrap();
-    let server = pool.get_mut(&id)
-        .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
-    let patch = patch.into_inner();
+    let ret;
 
-    server
-        .modify(patch.id, patch.operation)
-        .map(|(id, operation)| Json(Patch { id, operation }))
-        .map_err(|e| OT(e))
+    let mut pool = SERVER_POOL.write().unwrap();
+    {
+        let server = pool.get_mut(&id)
+            .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
+        let patch = patch.into_inner();
+
+        ret = server
+            .modify(patch.id, patch.operation)
+            .map(|(id, operation)| Json(Patch { id, operation }))
+            .map_err(|e| OT(e))?;
+    }
+
+    pool.sync();
+
+    Ok(ret)
 }
 
 #[get("/realtime/new")]
