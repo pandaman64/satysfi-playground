@@ -18,6 +18,7 @@ extern crate uuid;
 use realtime::uuid::Uuid;
 
 use std::path::{Path, PathBuf};
+use std::io;
 use std::fs;
 use std::fs::File;
 use std::collections::HashMap;
@@ -41,23 +42,27 @@ struct ServerPool {
 }
 
 impl ServerPool {
+    fn retrieve_from_entry(entry: io::Result<fs::DirEntry>) -> Result<(Uuid, ServerData), Error> {
+        let entry = entry?;
+        let path = entry.path();
+        let id = Uuid::parse_str(path.file_name().unwrap().to_str().unwrap())?;
+        let file = File::open(&path)?;
+        let data = serde_json::from_reader(file)?;
+
+        Ok((id, data))
+    }
+
     fn from_directory<P: AsRef<Path>>(path: P) -> ServerPool {
         let mut servers = HashMap::new();
 
         if let Ok(entries) = fs::read_dir(path) {
             for entry in entries {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if path.is_file() {
-                        if let Ok(id) = Uuid::parse_str(path.to_str().unwrap()) {
-                            if let Ok(file) = File::open(&path) {
-                                if let Ok(server) = serde_json::from_reader(file) {
-                                    servers.insert(id, server);
-                                }
-                            }
-                        }
-                    }
-                }
+                match ServerPool::retrieve_from_entry(entry) {
+                    Ok((id, data)) => {
+                        servers.insert(id, data);
+                    },
+                    Err(e) => println!("from_directory: {}", e), // this should be debug! or something like it
+                }                
             }
         }
 
