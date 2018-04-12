@@ -1,4 +1,5 @@
 extern crate rocket;
+use rocket::response::Redirect;
 extern crate rocket_contrib;
 use rocket_contrib::{Json, Template, UUID};
 
@@ -16,12 +17,9 @@ use realtime::ot::Operation;
 extern crate uuid;
 use realtime::uuid::Uuid;
 
-use util::*;
-
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs;
 use std::fs::File;
-use std::io;
 use std::collections::HashMap;
 use std::sync::RwLock;
 
@@ -32,8 +30,14 @@ struct Query {
     since_id: usize,
 }
 
+#[derive(Serialize, Deserialize)]
+struct ServerData {
+    latest_pdf_name: String,
+    server: Server,
+}
+
 struct ServerPool {
-    servers: HashMap<Uuid, Server>,
+    servers: HashMap<Uuid, ServerData>,
 }
 
 impl ServerPool {
@@ -62,32 +66,35 @@ impl ServerPool {
         }
     }
 
-    fn get(&self, id: &Uuid) -> Option<&Server> {
+    fn get_data(&self, id: &Uuid) -> Option<&ServerData> {
         self.servers.get(id)
     }
 
+    fn get(&self, id: &Uuid) -> Option<&Server> {
+        self.servers.get(id).map(|data| &data.server)
+    }
+
     fn get_mut(&mut self, id: &Uuid) -> Option<&mut Server> {
-        self.servers.get_mut(id)
+        self.servers.get_mut(id).map(|data| &mut data.server)
     }
 
-    fn insert(&mut self, id: Uuid, server: Server) {
-        self.servers.insert(id, server);
+    fn insert(&mut self, id: Uuid, data: ServerData) {
+        self.servers.insert(id, data);
     }
 
-    fn sync(&self) -> Result<(), io::Error> {
-        // TODO: implement
-        Ok(())
+    fn sync(&self) {
+        let base = PathBuf::new().join(BASE_PATH);
+        for (id, server) in self.servers.iter() {
+            let path = base.join(&id.hyphenated().to_string());
+            if let Ok(file) = File::create(path) {
+                serde_json::to_writer(file, &server).unwrap();
+            }
+        }
     }
 }
 
 lazy_static! {
     static ref SERVER_POOL: RwLock<ServerPool> = RwLock::new(ServerPool::from_directory(BASE_PATH));
-}
-
-#[derive(Serialize, Deserialize)]
-struct ServerData {
-    pdfname: String,
-    server: Server,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -125,11 +132,18 @@ fn get_session(id: UUID) -> Result<Template, Error> {
     let pool = SERVER_POOL
         .read()
         .unwrap();
-    let server = pool
-        .get(&id)
+    let data = pool
+        .get_data(&id)
         .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
 
-    unimplemented!()
+    let state = data.server.current_state();
+
+    let mut ctx = HashMap::new();
+    ctx.insert("code", state.content.clone()); 
+    ctx.insert("pdfname", data.latest_pdf_name.clone()); 
+    ctx.insert("id", id.hyphenated().to_string());
+
+    Ok(Template::render("realtime", &ctx))
 }
 
 const DEFAULT_CODE: &'static str = "@require: stdjabook
@@ -154,7 +168,7 @@ fn patch_session(id: UUID, patch: Json<Patch>) -> String {
 }
 
 #[get("/realtime/new")]
-fn new_session() -> Result<Template, Error> {
+fn new_session() -> Result<Redirect, Error> {
     let id = Uuid::new_v4();
     let server = {
         let mut server = Server::new();
@@ -164,19 +178,22 @@ fn new_session() -> Result<Template, Error> {
             op
         };
         let initial_id = server.current_state().id.clone();
-        server.modify(initial_id, op);
+        server.modify(initial_id, op).unwrap();
         server
     };
     
     let mut pool = SERVER_POOL
         .write()
         .unwrap();
-    pool.insert(id, server);
-    pool.sync()?;
+    pool.insert(id, ServerData { 
+        latest_pdf_name: DEFAULT_PDF.into(),
+        server
+    });
+    pool.sync();
 
-    let mut ctx = create_context(DEFAULT_PDF.into(), DEFAULT_CODE.into(), DEFAULT_PDF.into());
-    ctx.insert("id", id.hyphenated().to_string());
+    let id = id.hyphenated().to_string();
+    let redirect_url = format!("/realtime/{}", id);
 
-    Ok(Template::render("realtime", &ctx))
+    Ok(Redirect::to(&redirect_url))
 }
 
