@@ -14,7 +14,6 @@ use failure::Error;
 
 extern crate futures;
 use futures::prelude::*;
-use futures::{Async, Future, Poll};
 
 extern crate serde;
 #[macro_use]
@@ -28,6 +27,9 @@ use ot::*;
 
 use std::cell::RefCell;
 use std::rc::Rc;
+
+extern crate subject;
+use subject::Subject;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 struct Query {
