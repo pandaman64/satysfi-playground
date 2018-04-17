@@ -294,7 +294,6 @@ thread_local! {
     static OPERATIONS: RefCell<Vec<Operation>> = RefCell::new(vec![]);
 }
 
-#[js_export]
 fn retain(operation: OperationHandle, len: usize) {
     OPERATIONS.with(|operations| {
         let mut operations = operations.borrow_mut();
@@ -323,7 +322,6 @@ fn insert(operation: OperationHandle, s: String) {
     })
 }
 
-#[js_export]
 fn delete(operation: OperationHandle, len: usize) {
     OPERATIONS.with(|operations| {
         let mut operations = operations.borrow_mut();
