@@ -231,13 +231,33 @@ thread_local! {
     static OPERATIONS: RefCell<Vec<Operation>> = RefCell::new(vec![]);
 }
 
+#[js_export]
+fn new_operation() -> OperationHandle {
+    OPERATIONS.with(|operations| {
+        let mut operations = operations.borrow_mut();
+        let handle = OperationHandle(operations.len());
+        operations.push(Operation::new());
+        handle
+    })
+}
+
+#[js_export]
+fn show_operation(operation: OperationHandle) -> Option<String> {
+    OPERATIONS.with(|operations| {
+        let operations = operations.borrow();
+        operations
+            .get(operation.0)
+            .map(|op| format!("{:?}", op))
+    })
+}
+
 fn retain(operation: OperationHandle, len: usize) {
     OPERATIONS.with(|operations| {
         let mut operations = operations.borrow_mut();
         if operation.0 < operations.len() {
             operations[operation.0].retain(len);
         } else {
-            unreachable!()
+            unreachable!("operation out of range")
         }
     })
 }
@@ -254,7 +274,7 @@ fn insert(operation: OperationHandle, s: String) {
         if operation.0 < operations.len() {
             operations[operation.0].insert(s);
         } else {
-            unreachable!()
+            unreachable!("operation out of range")
         }
     })
 }
@@ -265,7 +285,7 @@ fn delete(operation: OperationHandle, len: usize) {
         if operation.0 < operations.len() {
             operations[operation.0].delete(len);
         } else {
-            unreachable!()
+            unreachable!("operation out of range")
         }
     })
 }
