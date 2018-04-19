@@ -70,53 +70,73 @@
                         editor.setTheme("ace/theme/terminal");
                         document.getElementById('editor').style.fontSize='14px';
 
-                        // 当分ASCIIだけ考えるということで
-                        let session = editor.session;
-                        session.addEventListener("change", delta => {
-                            let retain_before = [];
-                            let middle = delta.lines;
-                            let retain_after = [];
+                        some_promise = Rust.client.then(c => {
+                            client = c;
+                            let connection = client.get_connection();
+                            console.log("got connection");
+                            return client.get_client(connection);
+                        }).then(ot_client => {
+                            console.log("got client");
+                            // 当分ASCIIだけ考えるということで
+                            let session = editor.session;
+                            session.setValue(client.current_content(ot_client));
 
-                            if (delta.action === "insert") {
-                                for (let i = 0; i < session.getLength(); i++) {
-                                    let s = session.getLine(i);
-                                    if (i < delta.start.row) {
-                                        retain_before.push(s);
-                                    } else if (i > delta.end.row) {
-                                        retain_after.push(s);
-                                    } else {
-                                        // start.row <= i <= end.row
-                                        if (i === delta.start.row && i === delta.end.row) {
-                                            // start.row == i == end.row
-                                            retain_before.push(s.slice(0, delta.start.column));
-                                            retain_after.push(s.slice(delta.end.column));
+                            session.addEventListener("change", delta => {
+                                let retain_before = [];
+                                let middle = delta.lines;
+                                let retain_after = [];
+
+                                if (delta.action === "insert") {
+                                    for (let i = 0; i < session.getLength(); i++) {
+                                        let s = session.getLine(i);
+                                        if (i < delta.start.row) {
+                                            retain_before.push(s);
+                                        } else if (i > delta.end.row) {
+                                            retain_after.push(s);
+                                        } else {
+                                            // start.row <= i <= end.row
+                                            if (i === delta.start.row && i === delta.end.row) {
+                                                // start.row == i == end.row
+                                                retain_before.push(s.slice(0, delta.start.column));
+                                                retain_after.push(s.slice(delta.end.column));
+                                            } else if (i === delta.start.row) {
+                                                // start.row == i < end.row
+                                                retain_before.push(s.slice(0, delta.start.column));
+                                            }  else if (i === delta.end.row) {
+                                                // start.row < i == end.row
+                                                retain_after.push(s.slice(delta.end.column));
+                                            }
+                                        }
+                                    }
+                                } else if (delta.action === "remove") {
+                                    let end = false;
+
+                                    for (let i = 0; i < session.getLength(); i++) {
+                                        let s = session.getLine(i);
+                                        if (end) {
+                                            retain_after.push(s);
+                                        } else if (i < delta.start.row) {
+                                            retain_before.push(s);
                                         } else if (i === delta.start.row) {
-                                            // start.row == i < end.row
                                             retain_before.push(s.slice(0, delta.start.column));
-                                        }  else if (i === delta.end.row) {
-                                            // start.row < i == end.row
-                                            retain_after.push(s.slice(delta.end.column));
+                                            retain_after.push(s.slice(delta.start.column));
+                                            end = true;
                                         }
                                     }
                                 }
-                            } else if (delta.action === "remove") {
-                                let end = false;
 
-                                for (let i = 0; i < session.getLength(); i++) {
-                                    let s = session.getLine(i);
-                                    if (end) {
-                                        retain_after.push(s);
-                                    } else if (i < delta.start.row) {
-                                        retain_before.push(s);
-                                    } else if (i === delta.start.row) {
-                                        retain_before.push(s.slice(0, delta.start.column));
-                                        retain_after.push(s.slice(delta.start.column));
-                                        end = true;
-                                    }
+                                //console.log([ retain_before, middle, retain_after ]);
+                                let op = client.new_operation();
+                                client.retain_str(op, retain_before.join("\n"));
+                                if (delta.action == "insert") {
+                                    client.insert(op, middle.join("\n"));
+                                } else if (delta.action == "remove") {
+                                    client.delete_str(op, middle.join("\n"));
                                 }
-                            }
-
-                            console.log([ retain_before, middle, retain_after ]);
+                                client.retain_str(op, retain_after.join("\n"));
+                                console.log(client.show_operation(op));
+                                client.push_operation(ot_client, op);
+                            });
                         });
                     </script>
                 </div>
