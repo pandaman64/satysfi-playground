@@ -89,7 +89,7 @@ fn get<R: serde::de::DeserializeOwned + 'static>(
     {
         let xhr_ = Rc::clone(&xhr);
         let mut result = result.clone();
-        let _handle = xhr.add_event_listener::<ResourceLoadEvent, _>(move |_| {
+        let _handle = xhr.add_event_listener::<ProgressLoadEvent, _>(move |_| {
             match xhr_.response_text() {
                 Ok(Some(s)) => match serde_json::from_str::<R>(&s) {
                     Ok(state) => result.ready(state),
@@ -124,7 +124,7 @@ fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static>(
     {
         let xhr_ = Rc::clone(&xhr);
         let mut result = result.clone();
-        let _handle = xhr.add_event_listener::<ResourceLoadEvent, _>(move |_| {
+        let _handle = xhr.add_event_listener::<ProgressLoadEvent, _>(move |_| {
             match xhr_.response_text() {
                 Ok(Some(s)) => match serde_json::from_str::<R>(&s) {
                     Ok(state) => result.ready(state),
