@@ -14,6 +14,7 @@ use failure::Error;
 
 extern crate futures;
 use futures::prelude::*;
+use futures::unsync::oneshot::channel;
 
 extern crate serde;
 #[macro_use]
@@ -27,9 +28,6 @@ use ot::*;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-
-extern crate subject;
-use subject::Subject;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 struct Query {
@@ -56,18 +54,6 @@ impl JSError {
     }
 }
 
-#[derive(Debug, Fail)]
-#[fail(display = "Got invalid response: {}", message)]
-struct InvalidResponse {
-    message: String,
-}
-
-impl InvalidResponse {
-    fn new(s: String) -> Self {
-        InvalidResponse { message: s }
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
 struct AjaxConnection;
 
@@ -80,26 +66,23 @@ impl AjaxConnection {
     }
 }
 
-fn get<R: serde::de::DeserializeOwned + 'static>(
+fn get<R: serde::de::DeserializeOwned + 'static + std::fmt::Debug>(
     path: &str,
 ) -> impl Future<Item = R, Error = Error> {
     let xhr = Rc::new(XmlHttpRequest::new());
-    let result: Subject<R, Error> = Subject::new();
+    let (tx, rx) = channel();
 
     {
+        let mut tx = Some(tx);
         let xhr_ = Rc::clone(&xhr);
-        let mut result = result.clone();
         let _handle = xhr.add_event_listener::<ProgressLoadEvent, _>(move |_| {
-            match xhr_.response_text() {
-                Ok(Some(s)) => match serde_json::from_str::<R>(&s) {
-                    Ok(state) => result.ready(state),
-                    Err(e) => {
-                        result.error(InvalidResponse::new(format!("cannot decode json: {}", e)))
+            if let Ok(Some(s)) = xhr_.response_text() {
+                if let Ok(value) = serde_json::from_str::<R>(&s) {
+                    if let Some(tx) = tx.take() {
+                        tx.send(value).unwrap();
                     }
-                },
-                Ok(None) => result.error(InvalidResponse::new("response is empty".into())),
-                Err(_) => result.error(JSError::new("XmlHttpRequest::response_text".into())),
-            };
+                }
+            }
         });
     }
 
@@ -111,30 +94,27 @@ fn get<R: serde::de::DeserializeOwned + 'static>(
         })
         .map_err(Into::into)
         .into_future()
-        .and_then(|_| result)
+        .and_then(|_| rx.map_err(Into::<Error>::into))
 }
 
-fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static>(
+fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static + std::fmt::Debug>(
     path: &str,
     body: &T,
 ) -> impl Future<Item = R, Error = Error> {
     let xhr = Rc::new(XmlHttpRequest::new());
-    let result: Subject<R, Error> = Subject::new();
+    let (tx, rx) = channel();
 
     {
+        let mut tx = Some(tx);
         let xhr_ = Rc::clone(&xhr);
-        let mut result = result.clone();
         let _handle = xhr.add_event_listener::<ProgressLoadEvent, _>(move |_| {
-            match xhr_.response_text() {
-                Ok(Some(s)) => match serde_json::from_str::<R>(&s) {
-                    Ok(state) => result.ready(state),
-                    Err(e) => {
-                        result.error(InvalidResponse::new(format!("cannot decode json: {}", e)))
+            if let Ok(Some(s)) = xhr_.response_text() {
+                if let Ok(value) = serde_json::from_str::<R>(&s) {
+                    if let Some(tx) = tx.take() {
+                        tx.send(value).unwrap();
                     }
-                },
-                Ok(None) => result.error(InvalidResponse::new("response is empty".into())),
-                Err(_) => result.error(JSError::new("XmlHttpRequest::response_text".into())),
-            };
+                }
+            }
         });
     }
 
@@ -147,7 +127,7 @@ fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static>(
                 .map_err(|_| JSError::new("XmlHttpRequest::send_with_string".into()).into())
         })
         .into_future()
-        .and_then(|_| result)
+        .and_then(|_| rx.map_err(Into::<Error>::into))
 }
 
 #[derive(Debug, Fail)]
