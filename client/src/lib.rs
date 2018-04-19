@@ -107,7 +107,7 @@ fn get<R: serde::de::DeserializeOwned + 'static>(
         .map_err(|_| JSError::new("XmlHttpRequest::open".into()))
         .and_then(|_| {
             xhr.send()
-                .map_err(|_| JSError::new("XmlHttpRequest::send_with_string".into()))
+                .map_err(|_| JSError::new("XmlHttpRequest::send".into()))
         })
         .map_err(Into::into)
         .into_future()
