@@ -77,7 +77,7 @@ fn get<R: serde::de::DeserializeOwned + 'static + std::fmt::Debug>(
         let xhr_ = Rc::clone(&xhr);
         let _handle = xhr.add_event_listener::<ProgressLoadEvent, _>(move |_| {
             if let Ok(Some(s)) = xhr_.response_text() {
-                if let Ok(value) = serde_json::from_str::<R>(&s) {
+                if let Ok(value) = serde_json::from_str(&s) {
                     if let Some(tx) = tx.take() {
                         tx.send(value).unwrap();
                     }
@@ -94,7 +94,7 @@ fn get<R: serde::de::DeserializeOwned + 'static + std::fmt::Debug>(
         })
         .map_err(Into::into)
         .into_future()
-        .and_then(|_| rx.map_err(Into::<Error>::into))
+        .and_then(|_| rx.map_err(Into::into))
 }
 
 fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static + std::fmt::Debug>(
@@ -109,7 +109,7 @@ fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static +
         let xhr_ = Rc::clone(&xhr);
         let _handle = xhr.add_event_listener::<ProgressLoadEvent, _>(move |_| {
             if let Ok(Some(s)) = xhr_.response_text() {
-                if let Ok(value) = serde_json::from_str::<R>(&s) {
+                if let Ok(value) = serde_json::from_str(&s) {
                     if let Some(tx) = tx.take() {
                         tx.send(value).unwrap();
                     }
@@ -127,7 +127,7 @@ fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static +
                 .map_err(|_| JSError::new("XmlHttpRequest::send_with_string".into()).into())
         })
         .into_future()
-        .and_then(|_| rx.map_err(Into::<Error>::into))
+        .and_then(|_| rx.map_err(Into::into))
 }
 
 #[derive(Debug, Fail)]
