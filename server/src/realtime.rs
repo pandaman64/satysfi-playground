@@ -12,7 +12,7 @@ extern crate serde_json;
 extern crate ot;
 use realtime::ot::Operation;
 use realtime::ot::server::Server;
-use realtime::ot::util::Id;
+use realtime::ot::util::{Id, State};
 
 extern crate uuid;
 use realtime::uuid::Uuid;
@@ -126,6 +126,19 @@ fn get_patch(id: UUID, query: Query) -> Result<Json<Patch>, RealtimeError> {
         .map_err(OT)
         .map(|(id, operation)| Json(Patch { id, operation }))
 }
+
+#[get("/realtime/<id>/latest")]
+fn get_latest(id: UUID) -> Result<Json<State>, RealtimeError> {
+    use self::RealtimeError::*;
+
+    let pool = SERVER_POOL.read().unwrap();
+    let server_data = pool.get(&id)
+        .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
+    Ok(Json(server_data
+        .current_state()
+        .clone()))
+}
+
 
 #[get("/realtime/<id>")]
 fn get_session(id: UUID) -> Result<Template, Error> {

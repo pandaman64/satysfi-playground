@@ -114,6 +114,7 @@ fn main() {
                 compile_handler,
                 // for realtime editing
                 realtime::get_session,
+                realtime::get_latest,
                 realtime::get_patch,
                 realtime::patch_session,
                 realtime::new_session,

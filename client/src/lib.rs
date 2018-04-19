@@ -170,7 +170,7 @@ impl Connection for AjaxConnection {
             self.retrieve_id()
                 .map_err(Into::into)
                 .into_future()
-                .and_then(move |id| get(&format!("/realtime/{}", id)))
+                .and_then(move |id| get(&format!("/realtime/{}/latest", id)))
                 .map_err(Into::into),
         )
     }
