@@ -73,7 +73,7 @@ struct AjaxConnection;
 
 impl AjaxConnection {
     fn retrieve_id(&self) -> Result<String, JSError> {
-        match js!(retrieve_id()) {
+        match js!{ return retrieve_id(); } {
             stdweb::Value::String(s) => Ok(s),
             _ => Err(JSError::new("cannot retrieve id of this session".into())),
         }
