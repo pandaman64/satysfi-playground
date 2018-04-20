@@ -97,7 +97,7 @@ fn get<R: serde::de::DeserializeOwned + 'static + std::fmt::Debug>(
         .and_then(|_| rx.map_err(Into::into))
 }
 
-fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static + std::fmt::Debug>(
+fn patch<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static + std::fmt::Debug>(
     path: &str,
     body: &T,
 ) -> impl Future<Item = R, Error = Error> {
@@ -118,9 +118,10 @@ fn post<T: serde::Serialize + ?Sized, R: serde::de::DeserializeOwned + 'static +
         });
     }
 
-    xhr.open("GET", path)
+    xhr.open("PATCH", path)
         .map_err(|_| JSError::new("XmlHttpRequest::open".into()))
         .map_err(Into::<Error>::into)
+        .and_then(|_| xhr.set_request_header("Content-Type", "application/json").map_err(Into::into))
         .and_then(|_| serde_json::to_string(body).map_err(Into::into))
         .and_then(|body| {
             xhr.send_with_string(&body)
@@ -167,7 +168,7 @@ impl Connection for AjaxConnection {
     }
 
     fn send_operation(&self, base_id: Id, operation: Operation) -> Self::Output {
-        let patch = Patch {
+        let p = Patch {
             id: base_id,
             operation: operation,
         };
@@ -177,7 +178,7 @@ impl Connection for AjaxConnection {
                 .map_err(Into::<Error>::into)
                 .map_err(Into::into)
                 .into_future()
-                .and_then(move |id| post(&format!("/realtime/{}/patch", id), &patch))
+                .and_then(move |id| patch(&format!("/realtime/{}/patch", id), &p))
                 .map_err(Into::into),
         )
     }

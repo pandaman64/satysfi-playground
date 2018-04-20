@@ -148,10 +148,7 @@ fn get_session(id: UUID) -> Result<Template, Error> {
     let data = pool.get_data(&id)
         .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
 
-    let state = data.server.current_state();
-
     let mut ctx = HashMap::new();
-    ctx.insert("code", state.content.clone());
     ctx.insert("pdfname", data.latest_pdf_name.clone());
     ctx.insert("id", id.hyphenated().to_string());
 
