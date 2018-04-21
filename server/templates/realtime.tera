@@ -69,6 +69,7 @@
                         let editor = ace.edit("editor");
                         editor.setTheme("ace/theme/terminal");
                         document.getElementById('editor').style.fontSize='14px';
+                        editor.setReadOnly(true);
 
                         some_promise = Rust.client.then(c => {
                             client = c;
@@ -145,6 +146,8 @@
                                         }
                                     });
                             });
+
+                            editor.setReadOnly(false);
                         });
                     </script>
                 </div>
