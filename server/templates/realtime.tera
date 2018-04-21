@@ -143,6 +143,9 @@
                                         let e = client.apply_response(ot_client, patch);
                                         if (e) {
                                             console.log(e);
+                                        } else {
+                                            console.log("apply_response succeeded");
+                                            session.setValue(client.current_content(ot_client));
                                         }
                                     });
                             });

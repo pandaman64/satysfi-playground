@@ -34,7 +34,7 @@ struct Query {
     since_id: usize,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 struct Patch {
     id: Id,
     operation: Operation,
@@ -178,7 +178,8 @@ impl Connection for AjaxConnection {
                 .map_err(Into::<Error>::into)
                 .map_err(Into::into)
                 .into_future()
-                .and_then(move |id| patch(&format!("/realtime/{}/patch", id), &p))
+                .and_then(move |id| patch::<_, Patch>(&format!("/realtime/{}", id), &p))
+                .map(|patch| (patch.id, patch.operation))
                 .map_err(Into::into),
         )
     }
