@@ -163,6 +163,7 @@ impl Connection for AjaxConnection {
                 .map_err(Into::into)
                 .into_future()
                 .and_then(move |id| get(&format!("/realtime/{}/patch?since_id={}", id, since_id)))
+                .map(|patch: Patch| (patch.id, patch.operation))
                 .map_err(Into::into),
         )
     }
@@ -178,8 +179,8 @@ impl Connection for AjaxConnection {
                 .map_err(Into::<Error>::into)
                 .map_err(Into::into)
                 .into_future()
-                .and_then(move |id| patch::<_, Patch>(&format!("/realtime/{}", id), &p))
-                .map(|patch| (patch.id, patch.operation))
+                .and_then(move |id| patch(&format!("/realtime/{}", id), &p))
+                .map(|patch: Patch| (patch.id, patch.operation))
                 .map_err(Into::into),
         )
     }

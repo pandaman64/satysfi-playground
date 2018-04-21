@@ -150,6 +150,23 @@
                                     });
                             });
 
+                            let f = _ => {
+                                console.log("fire");
+                                client.send_get_patch(ot_client)
+                                    .then(patch => {
+                                        let e = client.apply_patch(ot_client, patch)
+                                        if (e) {
+                                            console.log(e);
+                                        } else {
+                                            console.log("apply_patch succeeded");
+                                            //session.setValue(client.current_content(ot_client));
+                                        }
+
+                                        setTimeout(f, 100);
+                                    });
+                            };
+                            setTimeout(f, 100);
+
                             editor.setReadOnly(false);
                         });
                     </script>
