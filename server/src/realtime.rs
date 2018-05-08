@@ -10,9 +10,7 @@ extern crate serde;
 extern crate serde_json;
 
 extern crate ot;
-use realtime::ot::Operation;
-use realtime::ot::server::Server;
-use realtime::ot::util::{Id, State};
+use realtime::ot::cs::Id;
 
 extern crate uuid;
 use realtime::uuid::Uuid;
@@ -23,6 +21,10 @@ use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
+
+type Operation = ot::selection::linewise::Operation<Uuid>;
+type Server = ot::cs::server::Server<Operation>;
+type State = ot::cs::State<Operation>;
 
 const BASE_PATH: &'static str = "tmp/realtime";
 
@@ -155,16 +157,18 @@ fn get_session(id: UUID) -> Result<Template, Error> {
     Ok(Template::render("realtime", &ctx))
 }
 
-const DEFAULT_CODE: &'static str = "@require: stdjabook
-
-document (|
-  title = {\\SATySFi;概説};
-  author = {Takashi SUWA};
-  show-title = true;
-  show-toc = false;
-|) '<
-    +p { Hello, \\SATySFi; Playground! }
->";
+const DEFAULT_CODE: [&'static str; 10] = [
+    "@require: stdjabook",
+    "",
+    "document (|",
+    "title = {\\SATySFi;概説};",
+    "author = {Takashi SUWA};",
+    "show-title = true;",
+    "show-toc = false;",
+    "|) '<",
+    "    +p { Hello, \\SATySFi; Playground! }",
+    ">",
+];
 
 const DEFAULT_PDF: &'static str =
     "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
@@ -194,14 +198,17 @@ fn patch_session(id: UUID, patch: Json<Patch>) -> Result<Json<Patch>, RealtimeEr
 
 #[get("/realtime/new")]
 fn new_session() -> Result<Redirect, Error> {
+    use realtime::ot::linewise::Operation as BaseOperation;
     let id = Uuid::new_v4();
     let server = {
         let mut server = Server::new();
-        let op = {
-            let mut op = Operation::new();
-            op.insert(DEFAULT_CODE.into());
+        let op = Operation::with_content({
+            let mut op = BaseOperation::default();
+            for &line in DEFAULT_CODE.iter() {
+                op.insert(line.into());
+            }
             op
-        };
+        });
         let initial_id = server.current_state().id.clone();
         server.modify(initial_id, op).unwrap();
         server

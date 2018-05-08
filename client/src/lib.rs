@@ -14,17 +14,24 @@ use failure::Error;
 
 extern crate futures;
 use futures::prelude::*;
-use futures::unsync::oneshot::channel;
+use futures::channel::oneshot::channel;
 
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
 
+extern crate uuid;
+use uuid::Uuid;
+
 extern crate ot;
-use ot::client::*;
-use ot::util::*;
-use ot::*;
+use ot::cs::Id;
+
+type LineOperation = ot::charwise::Operation;
+type BaseOperation = ot::linewise::Operation;
+type Operation = ot::selection::linewise::Operation<Uuid>;
+type Client<C> = ot::cs::client::Client<Operation, C>;
+type State = ot::cs::State<Operation>;
 
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -141,7 +148,7 @@ impl From<Error> for AjaxConnectionError {
     }
 }
 
-impl Connection for AjaxConnection {
+impl ot::client::Connection<Operation> for AjaxConnection {
     type Error = AjaxConnectionError;
     type Output = Box<Future<Item = (Id, Operation), Error = Self::Error>>;
     type StateFuture = Box<Future<Item = State, Error = Self::Error>>;
@@ -210,72 +217,201 @@ struct OperationHandle(usize);
 js_serializable!(OperationHandle);
 js_deserializable!(OperationHandle);
 
+#[derive(Clone, Serialize, Deserialize)]
+struct UserId(Uuid);
+js_serializable!(UserId);
+js_deserializable!(UserId);
+
+// one uuidv4 for each session(user)
+thread_local! {
+    static USERID: UserId = UserId(Uuid::new_v4());
+}
+
 thread_local! {
     static OPERATIONS: RefCell<Vec<Operation>> = RefCell::new(vec![]);
 }
 
-#[js_export]
-fn new_operation() -> OperationHandle {
-    OPERATIONS.with(|operations| {
-        let mut operations = operations.borrow_mut();
-        let handle = OperationHandle(operations.len());
-        operations.push(Operation::new());
-        handle
-    })
-}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct Target(ot::selection::linewise::Target<Uuid>);
+js_serializable!(Target);
+js_deserializable!(Target);
 
 #[js_export]
-fn show_operation(operation: OperationHandle) -> Option<String> {
-    OPERATIONS.with(|operations| {
-        let operations = operations.borrow();
-        operations
-            .get(operation.0)
-            .map(|op| format!("{:?}", op))
-    })
+fn get_user_id() -> UserId {
+    USERID.with(|user_id| user_id.clone())
 }
 
-fn retain(operation: OperationHandle, len: usize) {
-    OPERATIONS.with(|operations| {
-        let mut operations = operations.borrow_mut();
-        if operation.0 < operations.len() {
-            operations[operation.0].retain(len);
+#[derive(Debug, Serialize, Deserialize)]
+struct Position {
+    row: usize,
+    col: usize,
+}
+js_serializable!(Position);
+js_deserializable!(Position);
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Delta {
+    action: String,
+    start: Position,
+    end: Position,
+    lines: Vec<String>,
+}
+js_serializable!(Delta);
+js_deserializable!(Delta);
+
+#[js_export]
+fn operate(_client: ClientHandle, js_delta: Delta, current_lines: Vec<String>) -> Option<()> {
+    use std::borrow::Borrow;
+
+    let op =
+        match js_delta.action.borrow() {
+            "insert" => {
+                assert_eq!(js_delta.lines.len(), js_delta.end.row - js_delta.start.row + 1);
+
+                let mut op = BaseOperation::default();
+
+                op.retain(js_delta.start.row);
+
+                if js_delta.start.row == js_delta.end.row {
+                    let mut line = current_lines[js_delta.start.row].chars();
+                    let mut line_op = LineOperation::default();
+                    let mut idx = 0;
+
+                    while let Some(c) = line.next() {
+                        if idx == js_delta.start.col {
+                            line_op.insert(js_delta.lines[0].clone());
+                        } else if idx < js_delta.start.col || idx >= js_delta.end.col {
+                            line_op.retain(c.len_utf8());
+                        }
+
+                        idx += c.len_utf16();
+                    }
+
+                    op.modify(line_op);
+                } else if js_delta.start.row < js_delta.end.row { // start.row < end.row
+                    // the first line
+                    {
+                        let mut line = current_lines[js_delta.start.row].chars();
+                        let mut line_op = LineOperation::default();
+                        let mut idx = 0;
+
+                        loop {
+                            if idx == js_delta.start.col {
+                                line_op.insert(js_delta.lines[0].clone());
+                                break;
+                            }
+
+                            if let Some(c) = line.next() {
+                                line_op.retain(c.len_utf8());
+                                idx += c.len_utf16();
+                            } else {
+                                unreachable!()
+                            }
+                        }
+                        op.modify(line_op);
+                    }
+
+                    // middle lines
+                    for line in js_delta.lines[1..(js_delta.lines.len() - 1)].iter() {
+                        op.insert(line.clone());
+                    }
+
+                    // the last line
+                    {
+                        let insert_str = js_delta.lines.last().map(Clone::clone).unwrap();
+                        let retain_len = current_lines[js_delta.end.row].len() - insert_str.len();
+                        let mut line_op = LineOperation::default();
+                        line_op.insert(insert_str);
+                        line_op.retain(retain_len);
+                        op.modify(line_op);
+                    }
+                } else {
+                    unreachable!()
+                }
+
+                op.retain(current_lines.len() - js_delta.end.row - 1);
+
+                op
+            },
+            "remove" => {
+                let mut op = BaseOperation::default();
+
+                op.retain(js_delta.start.row);
+
+                if js_delta.start.row == js_delta.end.row {
+                    assert_eq!(js_delta.lines.len(), 1);
+
+                    let mut line = current_lines[js_delta.start.row].chars();
+                    let mut line_op = LineOperation::default();
+                    let mut idx = 0;
+
+                    loop {
+                        if idx == js_delta.start.col {
+                            line_op.delete(js_delta.lines[0].len());
+                        }
+
+                        if let Some(c) = line.next() {
+                            line_op.retain(c.len_utf8());
+                            idx += c.len_utf16();
+                        } else {
+                            break;
+                        }
+                    }
+
+                    op.modify(line_op);
+                    op.retain(current_lines.len() - js_delta.end.row - 1);
+                } else if js_delta.start.row < js_delta.end.row {
+                    assert!(js_delta.lines.len() >= 2);
+
+                    // merge the first line and the last line
+                    {
+                        let mut line = current_lines[js_delta.start.row].chars();
+                        let mut line_op = LineOperation::default();
+                        let mut idx = 0;
+
+                        loop {
+                            if idx == js_delta.start.col {
+                                line_op.delete(js_delta.lines[0].len());
+                                break;
+                            }
+
+                            if let Some(c) = line.next() {
+                                line_op.retain(c.len_utf8());
+                                idx += c.len_utf16();
+                            } else {
+                                unreachable!()
+                            }
+                        }
+
+                        // last line
+                        line_op.insert(line.collect());
+
+                        op.modify(line_op);
+                    }
+
+                    // delete remaining lines
+                    op.delete(js_delta.lines.len() - 1);
+                } else {
+                    unreachable!()
+                }
+
+                op
+            },
+            _ => return None,
+        };
+    
+    CLIENT.with(|client| {
+        // nll?
+        let mut client = client.borrow_mut();
+        let client = client.as_mut().unwrap();
+        if let Ok(content) = client.current_content() {
+            let op = content.operate(op);
+            client.push_operation(op);
+            Some(())
         } else {
-            unreachable!("operation out of range")
+            None
         }
     })
-}
-
-#[js_export]
-fn retain_str(operation: OperationHandle, s: &str) {
-    retain(operation, s.len())
-}
-
-#[js_export]
-fn insert(operation: OperationHandle, s: String) {
-    OPERATIONS.with(|operations| {
-        let mut operations = operations.borrow_mut();
-        if operation.0 < operations.len() {
-            operations[operation.0].insert(s);
-        } else {
-            unreachable!("operation out of range")
-        }
-    })
-}
-
-fn delete(operation: OperationHandle, len: usize) {
-    OPERATIONS.with(|operations| {
-        let mut operations = operations.borrow_mut();
-        if operation.0 < operations.len() {
-            operations[operation.0].delete(len);
-        } else {
-            unreachable!("operation out of range")
-        }
-    })
-}
-
-#[js_export]
-fn delete_str(operation: OperationHandle, s: &str) {
-    delete(operation, s.len())
 }
 
 #[js_export]
@@ -298,13 +434,9 @@ fn get_client(_connection: ConnectionHandle) -> Promise {
 }
 
 #[js_export]
-fn current_content(_client: ClientHandle) -> stdweb::Value {
+fn current_content(_client: ClientHandle) -> Option<Target> {
     CLIENT.with(
-        |client| match client.borrow().as_ref().unwrap().current_content() {
-            Ok(c) => stdweb::Value::String(c),
-            // TODO: log error or pass
-            Err(_) => stdweb::Value::Null,
-        },
+        |client| client.borrow().as_ref().unwrap().current_content().map(Target).ok()
     )
 }
 
