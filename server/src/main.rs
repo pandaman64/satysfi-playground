@@ -137,7 +137,7 @@ fn main() {
             .resource("/permalink/{query}", |r| r.method(http::Method::GET).with(permalink)) 
             .middleware(Logger::default())
     })
-    .bind("0.0.0.0:8000")
+    .bind("localhost:8000")
     .unwrap()
     .run();
 }
