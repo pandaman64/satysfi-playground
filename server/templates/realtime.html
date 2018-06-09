@@ -38,8 +38,7 @@
                     stdout.value = response.stdout;
                     stderr.value = response.stderr;
                     let pdf_container = document.getElementById("result-container");
-                    pdf_container.src = "/files/" + response.name;
-                    // history.replaceState({}, "SATySFi Playground", "http://satysfi-playground.tech/permalink/" + response.name);
+                    pdf_container.src = "/assets/pdfjs/web/viewer.html?file=/files/" + response.name;
                 });
                 request.send(JSON.stringify(code));
             }
@@ -167,7 +166,7 @@
                         <a class="nav-link" href="#stderr" data-toggle="tab" role="tab">stderr</a>
                     </nav>
                     <div class="tab-content h-100">
-                        <iframe class="tab-pane active h-100" id="result-container" src="/files/{{pdfname}}" style="width: 100%; height: 100%" role="tabpanel"></iframe>
+                        <iframe class="tab-pane active h-100" id="result-container" src="/assets/pdfjs/web/viewer.html?file=/files/{{pdfname}}" style="width: 100%; height: 100%" role="tabpanel"></iframe>
                         <textarea class="tab-pane h-100" id="stdout" readonly style="width: 100%" role="tabpanel"></textarea>
                         <textarea class="tab-pane h-100" id="stderr" readonly style="width: 100%" role="tabpanel"></textarea>
                     </div>

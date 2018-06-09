@@ -8,11 +8,13 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 
-rocket = "0.3.6"
-rocket_codegen = "0.3.6"
-sha2 = "0.7.0"
+actix-web = "0.6"
 
-rocket_cors = "0.2.1"
+tera = "0.11"
+
+env_logger = "0.5"
+
+sha2 = "0.7.0"
 
 ot = { git = "https://github.com/pandaman64/ot.git" }
 
@@ -22,9 +24,4 @@ failure_derive = "0.1.1"
 uuid = { version = "0.6.2", features = ["v4", "serde"] }
 
 lazy_static = "1.0"
-
-[dependencies.rocket_contrib]
-version = "*"
-default-features = false
-features = ["json", "tera_templates", "uuid"]
 
