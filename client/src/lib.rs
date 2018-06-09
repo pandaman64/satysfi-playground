@@ -7,6 +7,7 @@ use stdweb::web::event::*;
 use stdweb::web::IEventTarget;
 use stdweb::web::XmlHttpRequest;
 use stdweb::Promise;
+use stdweb::unstable::TryInto;
 
 #[macro_use]
 extern crate failure;
@@ -21,18 +22,15 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 
-extern crate uuid;
-use uuid::Uuid;
-
 extern crate ot;
 use ot::cs::Id;
 
-type LineOperation = ot::charwise::Operation;
 type BaseOperation = ot::linewise::Operation;
-type Operation = ot::selection::linewise::Operation<Uuid>;
+type Operation = ot::selection::linewise::Operation<usize>;
 type Client<C> = ot::cs::client::Client<Operation, C>;
 type State = ot::cs::State<Operation>;
 
+use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -217,14 +215,12 @@ struct OperationHandle(usize);
 js_serializable!(OperationHandle);
 js_deserializable!(OperationHandle);
 
-#[derive(Clone, Serialize, Deserialize)]
-struct UserId(Uuid);
-js_serializable!(UserId);
-js_deserializable!(UserId);
-
-// one uuidv4 for each session(user)
+// one random number for each session(user)
+// (I hope this will not collide with others)
+// TODO: rand 0.5 will support stdweb + wasm32-unknown-unknown, so let's use Uuid::new_v4() once
+// uuid crate adopt rand 0.5
 thread_local! {
-    static USERID: UserId = UserId(Uuid::new_v4());
+    static USERID: Cell<Option<usize>> = Cell::new(None);
 }
 
 thread_local! {
@@ -232,185 +228,203 @@ thread_local! {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-struct Target(ot::selection::linewise::Target<Uuid>);
+struct Target(ot::selection::linewise::Target<usize>);
 js_serializable!(Target);
 js_deserializable!(Target);
 
-#[js_export]
-fn get_user_id() -> UserId {
-    USERID.with(|user_id| user_id.clone())
+fn get_user_id() -> usize {
+    USERID.with(|user_id| user_id.get().unwrap())
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[js_export]
+fn set_user_id(id: usize) {
+    USERID.with(|user_id| user_id.set(Some(id)));
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Position {
     row: usize,
-    col: usize,
+    column: usize,
 }
 js_serializable!(Position);
 js_deserializable!(Position);
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Delta {
-    action: String,
-    start: Position,
-    end: Position,
-    lines: Vec<String>,
+fn get_line(document: stdweb::Reference, idx: usize) -> String {
+    js!(
+        return @{document}.getLine(@{idx as i32});
+    ).try_into().unwrap()
 }
-js_serializable!(Delta);
-js_deserializable!(Delta);
+
+fn get_lines(document: stdweb::Reference, start: usize, end: usize) -> Vec<String> {
+    js!(
+        return @{document}.getLines(@{start as i32}, @{end as i32});
+    ).try_into().unwrap()
+}
+
+fn operate(_client: ClientHandle, op: BaseOperation) -> Option<OperationHandle> {
+    CLIENT.with(|client| {
+        // nll?
+        let client = client.borrow();
+        let client = client.as_ref().unwrap();
+        let op = client.unsynced_content().ok()?.operate(op);
+        OPERATIONS.with(|operations| {
+            let mut operations = operations.borrow_mut();
+            let handle = OperationHandle(operations.len());
+            operations.push(op);
+            Some(handle)
+        })
+    })
+}
+
+// end_middle_of_last_line means this insertion ends at the middle of the last line of the insertion
+#[js_export]
+fn insert(client: ClientHandle, start: usize, end: usize, length: usize, document: stdweb::Reference) -> Option<OperationHandle> {
+    let mut op = BaseOperation::default();
+
+    op.retain(start)
+        .delete(1);
+
+    if start == end {
+        op.insert(get_line(document, start));
+    } else {
+        for line in get_lines(document, start, end).into_iter() {
+            op.insert(line);
+        }
+    }
+
+    op.retain(length - end - 1);
+
+    operate(client, op)
+}
 
 #[js_export]
-fn operate(_client: ClientHandle, js_delta: Delta, current_lines: Vec<String>) -> Option<()> {
-    use std::borrow::Borrow;
+fn remove(client: ClientHandle, start: usize, end: usize, length: usize, document: stdweb::Reference) -> Option<OperationHandle> {
+    let length = length + end - start;
+    let mut op = BaseOperation::default();
 
-    let op =
-        match js_delta.action.borrow() {
-            "insert" => {
-                assert_eq!(js_delta.lines.len(), js_delta.end.row - js_delta.start.row + 1);
+    op.retain(start)
+        .insert(get_line(document, start))
+        .delete(end - start + 1)
+        .retain(length - end - 1);
 
-                let mut op = BaseOperation::default();
+    operate(client, op)
+}
 
-                op.retain(js_delta.start.row);
-
-                if js_delta.start.row == js_delta.end.row {
-                    let mut line = current_lines[js_delta.start.row].chars();
-                    let mut line_op = LineOperation::default();
-                    let mut idx = 0;
-
-                    while let Some(c) = line.next() {
-                        if idx == js_delta.start.col {
-                            line_op.insert(js_delta.lines[0].clone());
-                        } else if idx < js_delta.start.col || idx >= js_delta.end.col {
-                            line_op.retain(c.len_utf8());
-                        }
-
-                        idx += c.len_utf16();
-                    }
-
-                    op.modify(line_op);
-                } else if js_delta.start.row < js_delta.end.row { // start.row < end.row
-                    // the first line
-                    {
-                        let mut line = current_lines[js_delta.start.row].chars();
-                        let mut line_op = LineOperation::default();
-                        let mut idx = 0;
-
-                        loop {
-                            if idx == js_delta.start.col {
-                                line_op.insert(js_delta.lines[0].clone());
-                                break;
-                            }
-
-                            if let Some(c) = line.next() {
-                                line_op.retain(c.len_utf8());
-                                idx += c.len_utf16();
-                            } else {
-                                unreachable!()
-                            }
-                        }
-                        op.modify(line_op);
-                    }
-
-                    // middle lines
-                    for line in js_delta.lines[1..(js_delta.lines.len() - 1)].iter() {
-                        op.insert(line.clone());
-                    }
-
-                    // the last line
-                    {
-                        let insert_str = js_delta.lines.last().map(Clone::clone).unwrap();
-                        let retain_len = current_lines[js_delta.end.row].len() - insert_str.len();
-                        let mut line_op = LineOperation::default();
-                        line_op.insert(insert_str);
-                        line_op.retain(retain_len);
-                        op.modify(line_op);
-                    }
-                } else {
-                    unreachable!()
-                }
-
-                op.retain(current_lines.len() - js_delta.end.row - 1);
-
-                op
-            },
-            "remove" => {
-                let mut op = BaseOperation::default();
-
-                op.retain(js_delta.start.row);
-
-                if js_delta.start.row == js_delta.end.row {
-                    assert_eq!(js_delta.lines.len(), 1);
-
-                    let mut line = current_lines[js_delta.start.row].chars();
-                    let mut line_op = LineOperation::default();
-                    let mut idx = 0;
-
-                    loop {
-                        if idx == js_delta.start.col {
-                            line_op.delete(js_delta.lines[0].len());
-                        }
-
-                        if let Some(c) = line.next() {
-                            line_op.retain(c.len_utf8());
-                            idx += c.len_utf16();
-                        } else {
-                            break;
-                        }
-                    }
-
-                    op.modify(line_op);
-                    op.retain(current_lines.len() - js_delta.end.row - 1);
-                } else if js_delta.start.row < js_delta.end.row {
-                    assert!(js_delta.lines.len() >= 2);
-
-                    // merge the first line and the last line
-                    {
-                        let mut line = current_lines[js_delta.start.row].chars();
-                        let mut line_op = LineOperation::default();
-                        let mut idx = 0;
-
-                        loop {
-                            if idx == js_delta.start.col {
-                                line_op.delete(js_delta.lines[0].len());
-                                break;
-                            }
-
-                            if let Some(c) = line.next() {
-                                line_op.retain(c.len_utf8());
-                                idx += c.len_utf16();
-                            } else {
-                                unreachable!()
-                            }
-                        }
-
-                        // last line
-                        line_op.insert(line.collect());
-
-                        op.modify(line_op);
-                    }
-
-                    // delete remaining lines
-                    op.delete(js_delta.lines.len() - 1);
-                } else {
-                    unreachable!()
-                }
-
-                op
-            },
-            _ => return None,
+fn to_rust_position(pos: Position, document: &stdweb::Reference) -> ot::selection::linewise::Position {
+    use ot::selection::linewise::Position;
+    if pos.column == 0 {
+        return Position {
+            row: pos.row,
+            col: pos.column,
         };
-    
+    }
+
+    let line: String = js!(return @{document}.getLine(@{pos.row as i32})).try_into().unwrap();
+    let mut idx_16 = 0;
+    let mut idx_8 = 0;
+
+    for c in line.chars() {
+        idx_16 += c.len_utf16();
+        idx_8 += c.len_utf8();
+
+        if idx_16 == pos.column {
+            return Position {
+                row: pos.row,
+                col: idx_8,
+            };
+        }
+    }
+
+    unreachable!()
+}
+
+fn to_js_position(pos: ot::selection::linewise::Position, document: &stdweb::Reference) -> Position {
+    if pos.col == 0 {
+        return Position {
+            row: pos.row,
+            column: pos.col,
+        };
+    }
+
+    let line: String = js!(return @{document}.getLine(@{pos.row as i32})).try_into().unwrap();
+    let mut idx_16 = 0;
+    let mut idx_8 = 0;
+
+    for c in line.chars() {
+        idx_16 += c.len_utf16();
+        idx_8 += c.len_utf8();
+
+        if idx_8 == pos.col {
+            return Position {
+                row: pos.row,
+                column: idx_16,
+            };
+        }
+    }
+
+    unreachable!()
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+struct Range {
+    start: Position,
+    end: Position,
+}
+js_serializable!(Range);
+js_deserializable!(Range);
+
+fn to_rust_range(range: Range, document: &stdweb::Reference) -> ot::selection::linewise::Selection {
+    ot::selection::linewise::Selection::Range(to_rust_position(range.start, document), to_rust_position(range.end, document))
+}
+
+fn to_js_range(s: ot::selection::linewise::Selection, document: &stdweb::Reference) -> Range {
+    match s {
+        ot::selection::linewise::Selection::Cursor(pos) => {
+            let pos = to_js_position(pos, document);
+            Range {
+                start: pos,
+                end: pos,
+            }
+        },
+        ot::selection::linewise::Selection::Range(start, end) => Range {
+            start: to_js_position(start, document),
+            end: to_js_position(end, document),
+        },
+    }
+}
+
+#[js_export]
+fn select(_client: ClientHandle, cursor: Position, ranges: Vec<Range>, document: stdweb::Reference) -> Option<OperationHandle> {
+    use ot::selection::linewise::Selection::Cursor;
+
+    let mut selection = Vec::with_capacity(ranges.len() + 1);
+    selection.push(Cursor(to_rust_position(cursor, &document)));
+    selection.extend(ranges.into_iter().filter(|r| r.start != r.end).map(|r| to_rust_range(r, &document)));
+
     CLIENT.with(|client| {
         // nll?
         let mut client = client.borrow_mut();
         let client = client.as_mut().unwrap();
-        if let Ok(content) = client.current_content() {
-            let op = content.operate(op);
-            client.push_operation(op);
-            Some(())
-        } else {
-            None
-        }
+
+        let target = client.unsynced_content().ok()?;
+        let mut new_selection = target.selection.clone();
+        new_selection.insert(get_user_id(), selection);
+        let op = target.select(new_selection);
+
+        OPERATIONS.with(|operations| {
+            let mut operations = operations.borrow_mut();
+            let handle = OperationHandle(operations.len());
+            operations.push(op);
+            Some(handle)
+        })
+    })
+}
+
+#[js_export]
+fn show_operation(op: OperationHandle) -> String {
+    OPERATIONS.with(|operations| {
+        let operations = operations.borrow();
+        format!("{:?}", operations[op.0])
     })
 }
 
@@ -438,6 +452,30 @@ fn current_content(_client: ClientHandle) -> Option<Target> {
     CLIENT.with(
         |client| client.borrow().as_ref().unwrap().current_content().map(Target).ok()
     )
+}
+
+#[js_export]
+fn unsynced_lines(_client: ClientHandle) -> Vec<String> {
+    CLIENT.with(|client| {
+        let client = client.borrow();
+        let client = client.as_ref().unwrap();
+        let content = client.unsynced_content().unwrap();
+        content.base
+    })
+}
+
+#[js_export]
+fn unsynced_selection(_client: ClientHandle, document: stdweb::Reference) -> Vec<Range> {
+    CLIENT.with(|client| {
+        let client = client.borrow();
+        let client = client.as_ref().unwrap();
+        let content = client.unsynced_content().unwrap();
+        content
+            .selection[&get_user_id()]
+            .iter()
+            .map(|s| to_js_range(*s, &document))
+            .collect()
+    })
 }
 
 #[js_export]
@@ -506,4 +544,9 @@ fn apply_patch(_client: ClientHandle, patch: Patch) -> stdweb::Value {
             Err(e) => stdweb::Value::String(e.to_string()),
         }
     })
+}
+
+#[js_export]
+fn initialize_stdweb() {
+    stdweb::initialize()
 }

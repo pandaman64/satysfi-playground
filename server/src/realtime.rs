@@ -22,7 +22,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::RwLock;
 
-type Operation = ot::selection::linewise::Operation<Uuid>;
+type Operation = ot::selection::linewise::Operation<usize>;
 type Server = ot::cs::server::Server<Operation>;
 type State = ot::cs::State<Operation>;
 
@@ -92,7 +92,7 @@ impl ServerPool {
         for (id, server) in self.servers.iter() {
             let path = base.join(&id.hyphenated().to_string());
             if let Ok(file) = File::create(path) {
-                serde_json::to_writer(file, &server).unwrap();
+                serde_json::to_writer_pretty(file, &server).unwrap();
             }
         }
     }
@@ -102,7 +102,7 @@ lazy_static! {
     static ref SERVER_POOL: RwLock<ServerPool> = RwLock::new(ServerPool::from_directory(BASE_PATH));
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct Patch {
     id: Id,
     operation: Operation,
@@ -157,6 +157,7 @@ fn get_session(id: UUID) -> Result<Template, Error> {
     Ok(Template::render("realtime", &ctx))
 }
 
+/*
 const DEFAULT_CODE: [&'static str; 10] = [
     "@require: stdjabook",
     "",
@@ -169,6 +170,8 @@ const DEFAULT_CODE: [&'static str; 10] = [
     "    +p { Hello, \\SATySFi; Playground! }",
     ">",
 ];
+*/
+const DEFAULT_CODE: [&'static str; 1] = [ "Hello, World!" ];
 
 const DEFAULT_PDF: &'static str =
     "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
@@ -184,6 +187,8 @@ fn patch_session(id: UUID, patch: Json<Patch>) -> Result<Json<Patch>, RealtimeEr
         let server = pool.get_mut(&id)
             .ok_or_else(|| ServerNotFound(id.hyphenated().to_string()))?;
         let patch = patch.into_inner();
+
+        println!("{:?}", patch);
 
         ret = server
             .modify(patch.id, patch.operation)
