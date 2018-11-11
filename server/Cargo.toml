@@ -16,8 +16,6 @@ env_logger = "0.5"
 
 sha2 = "0.7.0"
 
-ot = { git = "https://github.com/pandaman64/ot.git" }
-
 failure = "0.1.1"
 failure_derive = "0.1.1"
 
