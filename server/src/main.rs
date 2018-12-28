@@ -4,7 +4,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 
-extern crate actix_web;
+use actix_web;
 use actix_web::{server, App, HttpRequest, HttpResponse, fs::NamedFile, http, Json, ResponseError, middleware::Logger, fs::StaticFiles};
 use std::path::PathBuf;
 
@@ -12,21 +12,16 @@ use std::path::PathBuf;
 extern crate tera;
 use tera::Tera;
 
-extern crate env_logger;
+use env_logger;
 
 use std::fs::File;
 use std::io::Read;
-
-extern crate sha2;
 
 #[macro_use]
 extern crate failure;
 
 #[macro_use]
 extern crate futures;
-extern crate tokio_fs;
-extern crate tokio_process;
-extern crate tokio_timer;
 
 //mod realtime;
 mod util;
