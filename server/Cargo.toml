@@ -23,3 +23,9 @@ uuid = { version = "0.6.2", features = ["v4", "serde"] }
 
 lazy_static = "1.0"
 
+tokio-fs = "0.1.4"
+tokio-process = "0.2.3"
+tokio-timer = "0.2.8"
+
+futures = "0.1"
+

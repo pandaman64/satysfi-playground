@@ -22,6 +22,12 @@ extern crate sha2;
 #[macro_use]
 extern crate failure;
 
+#[macro_use]
+extern crate futures;
+extern crate tokio_fs;
+extern crate tokio_process;
+extern crate tokio_timer;
+
 //mod realtime;
 mod util;
 use util::*;

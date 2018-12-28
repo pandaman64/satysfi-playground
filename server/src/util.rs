@@ -4,10 +4,8 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-extern crate failure;
 use failure::Error;
 
-extern crate sha2;
 use sha2::Digest;
 
 const BASE_PATH: &'static str = "tmp";
