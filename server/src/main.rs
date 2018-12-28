@@ -30,7 +30,7 @@ extern crate tokio_timer;
 
 //mod realtime;
 mod util;
-use util::*;
+use crate::util::*;
 
 lazy_static! {
     static ref TEMPLATE: Tera = compile_templates!("templates/*.html");

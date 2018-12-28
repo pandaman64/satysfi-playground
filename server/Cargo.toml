@@ -2,6 +2,7 @@
 name = "server"
 version = "0.1.0"
 authors = ["pandaman64 <kointosudesuyo@infoseek.jp>"]
+edition = "2018"
 
 [dependencies]
 serde = "1.0"
