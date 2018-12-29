@@ -78,26 +78,24 @@ pub struct Input {
 pub struct Output {
     pub name: String,
     pub success: bool,
-    pub stdout: String,
-    pub stderr: String,
+    pub stdout: Vec<u8>,
+    pub stderr: Vec<u8>,
 }
 
 #[derive(Debug, Fail)]
 #[fail(display = "Cache not found")]
 struct CacheNotFound;
 
-fn cache(hash: &str) -> Result<Output, Error> {
+async fn cache(hash: &str) -> Result<Output, Error> {
     let stdout_filename = make_input_dir(&hash).join("stdout");
     let stderr_filename = make_input_dir(&hash).join("stderr");
 
     if Path::new(BASE_PATH).join(&hash).is_dir() {
-        let mut stdout_file = File::open(&stdout_filename)?;
-        let mut stderr_file = File::open(&stderr_filename)?;
-        let mut stdout = String::new();
-        let mut stderr = String::new();
+        let stdout_file = tokio::await!(tokio::fs::File::open(stdout_filename))?;
+        let stderr_file = tokio::await!(tokio::fs::File::open(stderr_filename))?;
 
-        stdout_file.read_to_string(&mut stdout)?;
-        stderr_file.read_to_string(&mut stderr)?;
+        let (_, stdout) = tokio::await!(tokio::io::read_to_end(stdout_file, vec![]))?;
+        let (_, stderr) = tokio::await!(tokio::io::read_to_end(stderr_file, vec![]))?;
 
         Ok(Output {
             name: hash.into(),
@@ -119,7 +117,7 @@ pub async fn compile(input: String) -> Result<Output, Error> {
     let stdout_filename = make_input_dir(&hash).join("stdout");
     let stderr_filename = make_input_dir(&hash).join("stderr");
 
-    if let Ok(output) = cache(&hash) {
+    if let Ok(output) = tokio::await!(cache(&hash)) {
         return Ok(output);
     }
 
@@ -140,21 +138,19 @@ pub async fn compile(input: String) -> Result<Output, Error> {
         .spawn_async()?;
 
     let output = tokio::await!(child.wait_with_output())?;
-    let stdout = String::from_utf8(output.stdout)?;
-    let stderr = String::from_utf8(output.stderr)?;
 
     {
         let mut stdout_file = tokio::await!(tokio::fs::File::create(stdout_filename))?;
         let mut stderr_file = tokio::await!(tokio::fs::File::create(stderr_filename))?;
 
-        tokio::await!(stdout_file.write_all_async(stdout.as_bytes()))?;
-        tokio::await!(stderr_file.write_all_async(stderr.as_bytes()))?;
+        tokio::await!(stdout_file.write_all_async(&output.stdout))?;
+        tokio::await!(stderr_file.write_all_async(&output.stderr))?;
     }
 
     Ok(Output {
         name: hash,
         success: output.status.success(),
-        stdout: stdout,
-        stderr: stderr,
+        stdout: output.stdout,
+        stderr: output.stderr,
     })
 }
