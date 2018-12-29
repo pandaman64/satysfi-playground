@@ -22,6 +22,8 @@ use std::io::Read;
 #[macro_use]
 extern crate failure;
 
+use log::info;
+
 //mod realtime;
 mod util;
 use crate::util::*;
@@ -100,40 +102,51 @@ impl<'a> response::Responder<'a> for CachedFile {
 }
 */
 
-fn files(req: HttpRequest) -> Result<NamedFile, Error> {
+async fn files(req: HttpRequest) -> Result<NamedFile, Error> {
+    use futures::prelude::*;
+
     let hash: PathBuf = req.match_info()
         .query("hash")
         .map_err(Error::UriSegmentError)?;
     match NamedFile::open(make_output_path(&hash)) {
         Ok(file) => Ok(file),
-        _ => File::open(make_input_path(&hash))
-                .map_err(Error::IOError)
-                .and_then(|mut f| {
-                    let mut content = String::new();
-                    f.read_to_string(&mut content)
-                        .map_err(Error::IOError)?;
-                    futures::executor::block_on(compile(content))
-                        .map_err(|_| Error::CompileError)
-                })
-                .and_then(|output| NamedFile::open(output.name).map_err(Error::IOError)),
+        _ => {
+            let mut f = File::open(make_input_path(&hash))
+                .map_err(Error::IOError)?;
+            let mut content = vec![];
+            f.read_to_end(&mut content)
+                .map_err(Error::IOError)?;
+            let output = tokio::await!(compile(&content)
+                .map_err(|e| {
+                    info!("compile error: {:?}", e);
+                    Error::CompileError
+                }))?;
+            NamedFile::open(output.name).map_err(Error::IOError)
+        },
     }
 }
 
-fn compile_handler(input: Json<Input>) -> Result<Json<Output>, Error> {
-    futures::executor::block_on(compile(input.content.to_string()))
-        .map(Json)
-        .map_err(|_| Error::CompileError)
+async fn compile_handler(input: Json<Input>) -> Result<Json<Output>, Error> {
+    match tokio::await!(compile(input.content.as_bytes())) {
+        Ok(x) => Ok(Json(x)),
+        Err(e) => {
+            info!("compile error: {:?}", e);
+            Err(Error::CompileError)
+        }
+    }
 }
 
 fn main() {
+    use futures::prelude::*;
+
     env_logger::init();
 
     server::new(|| {
         App::new()
             .resource("/", |r| r.method(http::Method::GET).with(index))
-            .handler("/assets", StaticFiles::new("./assets"))
-            .resource("/files/{hash}", |r| r.method(http::Method::GET).with(files))
-            .resource("/compile", |r| r.method(http::Method::POST).with(compile_handler))
+            .handler("/assets", StaticFiles::new("./assets").unwrap())
+            .resource("/files/{hash}", |r| r.method(http::Method::GET).with_async(|x| Box::pin(files(x)).compat()))
+            .resource("/compile", |r| r.method(http::Method::POST).with_async(|x| Box::pin(compile_handler(x)).compat()))
             .resource("/permalink/{query}", |r| r.method(http::Method::GET).with(permalink)) 
             .middleware(Logger::default())
     })
