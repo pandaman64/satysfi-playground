@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
@@ -110,7 +110,10 @@ fn cache(hash: &str) -> Result<Output, Error> {
     }
 }
 
-pub fn compile(input: String) -> Result<Output, Error> {
+pub async fn compile(input: String) -> Result<Output, Error> {
+    use tokio::prelude::AsyncWriteExt;
+    use tokio_process::CommandExt;
+
     let hash = sha2::Sha256::digest_str(&input);
     let hash = format!("{:x}", hash);
     let stdout_filename = make_input_dir(&hash).join("stdout");
@@ -120,13 +123,13 @@ pub fn compile(input: String) -> Result<Output, Error> {
         return Ok(output);
     }
 
-    use std::fs::create_dir_all;
-    create_dir_all(make_input_dir(&hash))?;
-    create_dir_all(make_output_dir(&hash))?;
+    use tokio::fs::create_dir_all;
+    tokio::await!(create_dir_all(make_input_dir(&hash)))?;
+    tokio::await!(create_dir_all(make_output_dir(&hash)))?;
 
     let input_file_name = make_input_path(&hash);
-    let mut input_file = File::create(&input_file_name)?;
-    input_file.write_all(input.as_bytes())?;
+    let mut input_file = tokio::await!(tokio::fs::File::create(input_file_name.clone()))?;
+    tokio::await!(input_file.write_all_async(input.as_bytes()))?;
 
     let child = Command::new("./run.sh")
         .args(&[&input_file_name, &make_output_path(&hash)])
@@ -134,18 +137,18 @@ pub fn compile(input: String) -> Result<Output, Error> {
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()?;
+        .spawn_async()?;
 
-    let output = child.wait_with_output()?;
+    let output = tokio::await!(child.wait_with_output())?;
     let stdout = String::from_utf8(output.stdout)?;
     let stderr = String::from_utf8(output.stderr)?;
 
     {
-        let mut stdout_file = File::create(&stdout_filename)?;
-        let mut stderr_file = File::create(&stderr_filename)?;
+        let mut stdout_file = tokio::await!(tokio::fs::File::create(stdout_filename))?;
+        let mut stderr_file = tokio::await!(tokio::fs::File::create(stderr_filename))?;
 
-        stdout_file.write_all(stdout.as_bytes())?;
-        stderr_file.write_all(stderr.as_bytes())?;
+        tokio::await!(stdout_file.write_all_async(stdout.as_bytes()))?;
+        tokio::await!(stderr_file.write_all_async(stderr.as_bytes()))?;
     }
 
     Ok(Output {

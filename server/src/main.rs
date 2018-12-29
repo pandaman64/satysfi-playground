@@ -1,3 +1,5 @@
+#![feature(await_macro, async_await, futures_api)]
+
 #[macro_use]
 extern crate serde_derive;
 
@@ -19,9 +21,6 @@ use std::io::Read;
 
 #[macro_use]
 extern crate failure;
-
-#[macro_use]
-extern crate futures;
 
 //mod realtime;
 mod util;
@@ -113,7 +112,7 @@ fn files(req: HttpRequest) -> Result<NamedFile, Error> {
                     let mut content = String::new();
                     f.read_to_string(&mut content)
                         .map_err(Error::IOError)?;
-                    compile(content)
+                    futures::executor::block_on(compile(content))
                         .map_err(|_| Error::CompileError)
                 })
                 .and_then(|output| NamedFile::open(output.name).map_err(Error::IOError)),
@@ -121,7 +120,7 @@ fn files(req: HttpRequest) -> Result<NamedFile, Error> {
 }
 
 fn compile_handler(input: Json<Input>) -> Result<Json<Output>, Error> {
-    compile(input.content.to_string())
+    futures::executor::block_on(compile(input.content.to_string()))
         .map(Json)
         .map_err(|_| Error::CompileError)
 }
