@@ -20,13 +20,15 @@ fn retrieve_file<'a>(id: &'a str) -> Result<String, Error> {
     if id.len() != 64 {
         return Err(QueryError {
             message: "invalid length".into(),
-        }.into());
+        }
+        .into());
     }
     for c in id.chars() {
         if !c.is_digit(16) {
             return Err(QueryError {
                 message: "invalid character type".into(),
-            }.into());
+            }
+            .into());
         }
     }
 

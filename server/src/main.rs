@@ -7,7 +7,10 @@ extern crate serde_derive;
 extern crate lazy_static;
 
 use actix_web;
-use actix_web::{server, App, HttpRequest, HttpResponse, fs::NamedFile, http, Json, ResponseError, middleware::Logger, fs::StaticFiles};
+use actix_web::{
+    fs::NamedFile, fs::StaticFiles, http, middleware::Logger, server, App, HttpRequest,
+    HttpResponse, Json, ResponseError,
+};
 use std::path::PathBuf;
 
 #[macro_use]
@@ -46,8 +49,7 @@ enum Error {
 
 impl ResponseError for Error {
     fn error_response(&self) -> HttpResponse {
-        HttpResponse::InternalServerError()
-            .finish()
+        HttpResponse::InternalServerError().finish()
     }
 }
 
@@ -76,7 +78,7 @@ fn permalink(query: String) -> Result<HttpResponse, Error> {
 }
 
 fn index(_: HttpRequest) -> Result<HttpResponse, Error> {
-    let s = TEMPLATE 
+    let s = TEMPLATE
         .render(
             "index.html",
             &create_context(
@@ -105,24 +107,22 @@ impl<'a> response::Responder<'a> for CachedFile {
 async fn files(req: HttpRequest) -> Result<NamedFile, Error> {
     use futures::prelude::*;
 
-    let hash: PathBuf = req.match_info()
+    let hash: PathBuf = req
+        .match_info()
         .query("hash")
         .map_err(Error::UriSegmentError)?;
     match NamedFile::open(make_output_path(&hash)) {
         Ok(file) => Ok(file),
         _ => {
-            let mut f = File::open(make_input_path(&hash))
-                .map_err(Error::IOError)?;
+            let mut f = File::open(make_input_path(&hash)).map_err(Error::IOError)?;
             let mut content = vec![];
-            f.read_to_end(&mut content)
-                .map_err(Error::IOError)?;
-            let output = tokio::await!(compile(&content)
-                .map_err(|e| {
-                    info!("compile error: {:?}", e);
-                    Error::CompileError
-                }))?;
+            f.read_to_end(&mut content).map_err(Error::IOError)?;
+            let output = tokio::await!(compile(&content).map_err(|e| {
+                info!("compile error: {:?}", e);
+                Error::CompileError
+            }))?;
             NamedFile::open(output.name).map_err(Error::IOError)
-        },
+        }
     }
 }
 
@@ -145,9 +145,17 @@ fn main() {
         App::new()
             .resource("/", |r| r.method(http::Method::GET).with(index))
             .handler("/assets", StaticFiles::new("./assets").unwrap())
-            .resource("/files/{hash}", |r| r.method(http::Method::GET).with_async(|x| Box::pin(files(x)).compat()))
-            .resource("/compile", |r| r.method(http::Method::POST).with_async(|x| Box::pin(compile_handler(x)).compat()))
-            .resource("/permalink/{query}", |r| r.method(http::Method::GET).with(permalink)) 
+            .resource("/files/{hash}", |r| {
+                r.method(http::Method::GET)
+                    .with_async(|x| Box::pin(files(x)).compat())
+            })
+            .resource("/compile", |r| {
+                r.method(http::Method::POST)
+                    .with_async(|x| Box::pin(compile_handler(x)).compat())
+            })
+            .resource("/permalink/{query}", |r| {
+                r.method(http::Method::GET).with(permalink)
+            })
             .middleware(Logger::default())
     })
     .bind("localhost:8000")
