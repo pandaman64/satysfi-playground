@@ -140,13 +140,15 @@ pub async fn compile(input: String) -> Result<Output, Error> {
         .spawn_async()?;
 
     let output = tokio::await!(child.wait_with_output())?;
+    let stdout = String::from_utf8(output.stdout)?;
+    let stderr = String::from_utf8(output.stderr)?;
 
     {
         let mut stdout_file = tokio::await!(tokio::fs::File::create(stdout_filename))?;
         let mut stderr_file = tokio::await!(tokio::fs::File::create(stderr_filename))?;
 
-        tokio::await!(stdout_file.write_all_async(&output.stdout))?;
-        tokio::await!(stderr_file.write_all_async(&output.stderr))?;
+        tokio::await!(stdout_file.write_all_async(stdout.as_bytes()))?;
+        tokio::await!(stderr_file.write_all_async(stderr.as_bytes()))?;
     }
 
     Ok(Output {
