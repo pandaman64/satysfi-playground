@@ -81,8 +81,8 @@ pub struct Input {
 pub struct Output {
     pub name: String,
     pub success: bool,
-    pub stdout: Vec<u8>,
-    pub stderr: Vec<u8>,
+    pub stdout: String,
+    pub stderr: String,
 }
 
 #[derive(Debug, Fail)]
@@ -97,11 +97,11 @@ fn cache(hash: &str) -> Result<Output, Error> {
         let mut stdout_file = File::open(stdout_filename)?;
         let mut stderr_file = File::open(stderr_filename)?;
 
-        let mut stdout = vec![];
-        let mut stderr = vec![];
+        let mut stdout = String::new();
+        let mut stderr = String::new();
 
-        stdout_file.read_to_end(&mut stdout)?;
-        stderr_file.read_to_end(&mut stderr)?;
+        stdout_file.read_to_string(&mut stdout)?;
+        stderr_file.read_to_string(&mut stderr)?;
 
         Ok(Output {
             name: hash.into(),
@@ -155,7 +155,7 @@ pub async fn compile(input: &[u8]) -> Result<Output, Error> {
     Ok(Output {
         name: hash,
         success: output.status.success(),
-        stdout: output.stdout,
-        stderr: output.stderr,
+        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
     })
 }
