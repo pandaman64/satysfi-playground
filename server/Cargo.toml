@@ -29,8 +29,8 @@ tokio-process = "0.2.3"
 tokio-timer = "0.2.8"
 
 [dependencies.futures-preview]
-version = "0.3.0-alpha.11"
-features = ["compat", "tokio-compat"]
+version = "0.3.0-alpha.13"
+features = ["compat", "io-compat"]
 
 [dependencies.tokio]
 git = "https://github.com/tokio-rs/tokio.git"

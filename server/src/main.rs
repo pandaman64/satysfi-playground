@@ -9,7 +9,7 @@ extern crate lazy_static;
 use actix_web;
 use actix_web::{
     fs::NamedFile, fs::StaticFiles, http, middleware::Logger, server, App, HttpRequest,
-    HttpResponse, Json, ResponseError,
+    HttpResponse, Json, ResponseError, Path,
 };
 use std::path::PathBuf;
 
@@ -67,11 +67,12 @@ document (|
 const DEFAULT_PDF: &'static str =
     "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
 
-fn permalink(query: String) -> Result<HttpResponse, Error> {
+fn permalink(query: Path<String>) -> Result<HttpResponse, Error> {
+    log::info!("permalink query = {}", query);
     let s = TEMPLATE
         .render(
             "index.html",
-            &create_context(query, DEFAULT_CODE.into(), DEFAULT_PDF.into()),
+            &create_context(query.into_inner(), DEFAULT_CODE.into(), DEFAULT_PDF.into()),
         )
         .map_err(|e| Error::TemplateError(e.description().to_owned()))?;
     Ok(HttpResponse::Ok().content_type("text/html").body(s))

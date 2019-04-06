@@ -19,7 +19,7 @@ struct QueryError {
 fn retrieve_file<'a>(id: &'a str) -> Result<String, Error> {
     if id.len() != 64 {
         return Err(QueryError {
-            message: "invalid length".into(),
+            message: format!("invalid length: len({}) == {}", id, id.len()),
         }
         .into());
     }
@@ -43,16 +43,21 @@ pub fn create_context(
     default_code: String,
     default_pdf: String,
 ) -> HashMap<&'static str, String> {
-    if let Ok(s) = retrieve_file(&query) {
-        let mut ret = HashMap::new();
-        ret.insert("code", s);
-        ret.insert("pdfname", query);
-        return ret;
+    match retrieve_file(&query) {
+        Ok(s) => {
+            let mut ret = HashMap::new();
+            ret.insert("code", s);
+            ret.insert("pdfname", query);
+            log::info!("created context: {:?}", ret);
+            return ret;
+        }
+        Err(e) => log::info!("create context failed: {:?}", e),
     }
 
     let mut ret = HashMap::new();
     ret.insert("code", default_code);
     ret.insert("pdfname", default_pdf);
+    log::info!("default context: {:?}", ret);
     ret
 }
 
