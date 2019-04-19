@@ -145,7 +145,7 @@ pub async fn compile(input: &[u8]) -> Result<Output, Error> {
     }
 
     let create_output = tokio::await!(Command::new("docker")
-        .args(&["create", "pandman64/satysfi-playground"])
+        .args(&["create", "pandaman64/satysfi-playground"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
