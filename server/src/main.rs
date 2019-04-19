@@ -9,7 +9,7 @@ extern crate lazy_static;
 use actix_web;
 use actix_web::{
     fs::NamedFile, fs::StaticFiles, http, middleware::Logger, server, App, HttpRequest,
-    HttpResponse, Json, ResponseError, Path,
+    HttpResponse, Json, Path, ResponseError,
 };
 use std::path::PathBuf;
 

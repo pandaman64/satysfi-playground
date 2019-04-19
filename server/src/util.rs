@@ -120,6 +120,8 @@ fn cache(hash: &str) -> Result<Output, Error> {
 }
 
 pub async fn compile(input: &[u8]) -> Result<Output, Error> {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
     use tokio_process::CommandExt;
 
     let hash = sha2::Sha256::digest(input);
@@ -136,31 +138,111 @@ pub async fn compile(input: &[u8]) -> Result<Output, Error> {
     create_dir_all(make_output_dir(&hash))?;
 
     let input_file_name = make_input_path(&hash);
-    let mut input_file = File::create(&input_file_name)?;
-    input_file.write_all(&input)?;
+    {
+        let mut input_file = File::create(&input_file_name)?;
+        input_file.write_all(&input)?;
+        input_file.sync_all()?;
+    }
 
-    let child = Command::new("./run.sh")
-        .args(&[&input_file_name, &make_output_path(&hash)])
-        //.env_clear()
+    let create_output = tokio::await!(Command::new("docker")
+        .args(&["create", "pandman64/satysfi-playground"])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn_async()?;
+        .stderr(Stdio::null())
+        .output_async())?;
 
-    let output = tokio::await!(child.wait_with_output())?;
+    failure::ensure!(
+        create_output.status.success(),
+        "creating container failed: {:?}",
+        create_output.status
+    );
+
+    let container_name = {
+        let mut result = create_output.stdout;
+        assert_eq!(result.pop().unwrap(), b'\n');
+        result
+    };
+    let input_name = {
+        let mut copy = container_name.clone();
+        copy.extend(b":/tmp/input.saty");
+        copy
+    };
+    let output_name = {
+        let mut copy = container_name.clone();
+        copy.extend(b":/tmp/output.pdf");
+        copy
+    };
+
+    let copy_input = tokio::await!(Command::new("docker")
+        .args(&[
+            "cp".as_ref() as &OsStr,
+            input_file_name.as_ref(),
+            OsStrExt::from_bytes(&input_name)
+        ])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status_async()?)?;
+
+    failure::ensure!(copy_input.success(), "failed to copy input");
+
+    let run_satysfi = tokio::await!(Command::new("timeout")
+        .args(&[
+            "-sKILL".as_ref() as &OsStr,
+            "120s".as_ref(),
+            "docker".as_ref(),
+            "start".as_ref(),
+            "-a".as_ref(),
+            OsStrExt::from_bytes(&container_name)
+        ])
+        .output_async())?;
+
+    if run_satysfi.status.success() {
+        let copy_output = tokio::await!(Command::new("docker")
+            .args(&[
+                "cp".as_ref() as &OsStr,
+                OsStrExt::from_bytes(&output_name),
+                make_output_path(&hash).as_ref()
+            ])
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status_async()?)?;
+
+        failure::ensure!(copy_output.success(), "failed to copy output");
+    }
+
+    // it's ok to fail removing container now, we'll hopefully have periodic garbage collection
+    if let Ok(remove_container) = Command::new("docker")
+        .args(&[
+            "rm".as_ref() as &OsStr,
+            OsStrExt::from_bytes(&container_name),
+        ])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn_async()
+    {
+        // import future 0.1
+        use tokio::prelude::Future;
+
+        // spawn clean up task instead of waiting for completion.
+        // this task will wait until removal is done and then clean up OS resources
+        tokio::spawn(remove_container.map(|_| ()).map_err(|_| ()));
+    }
 
     {
         let mut stdout_file = File::create(stdout_filename)?;
         let mut stderr_file = File::create(stderr_filename)?;
 
-        stdout_file.write_all(&output.stdout)?;
-        stderr_file.write_all(&output.stderr)?;
+        stdout_file.write_all(&run_satysfi.stdout)?;
+        stderr_file.write_all(&run_satysfi.stderr)?;
     }
 
     Ok(Output {
         name: hash,
-        success: output.status.success(),
-        stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-        stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        success: run_satysfi.status.success(),
+        stdout: String::from_utf8_lossy(&run_satysfi.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&run_satysfi.stderr).into_owned(),
     })
 }
