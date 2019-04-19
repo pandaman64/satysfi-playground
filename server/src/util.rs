@@ -8,7 +8,7 @@ use failure::Error;
 
 use sha2::Digest;
 
-const BASE_PATH: &'static str = "tmp";
+const BASE_PATH: &str = "tmp";
 
 #[derive(Debug, Fail)]
 #[fail(display = "invalid query: {}", message)]
@@ -16,7 +16,7 @@ struct QueryError {
     message: String,
 }
 
-fn retrieve_file<'a>(id: &'a str) -> Result<String, Error> {
+fn retrieve_file(id: &str) -> Result<String, Error> {
     if id.len() != 64 {
         return Err(QueryError {
             message: format!("invalid length: len({}) == {}", id, id.len()),
@@ -111,8 +111,8 @@ fn cache(hash: &str) -> Result<Output, Error> {
         Ok(Output {
             name: hash.into(),
             success: true,
-            stdout: stdout,
-            stderr: stderr,
+            stdout,
+            stderr,
         })
     } else {
         Err(CacheNotFound.into())

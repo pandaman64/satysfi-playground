@@ -38,13 +38,13 @@ lazy_static! {
 #[derive(Debug, Fail)]
 enum Error {
     #[fail(display = "Template Error: {}", _0)]
-    TemplateError(String),
+    Template(String),
     #[fail(display = "IO Error: {}", _0)]
-    IOError(std::io::Error),
+    IO(std::io::Error),
     #[fail(display = "Compile Error")]
-    CompileError,
+    Compile,
     #[fail(display = "Uri Error: {}", _0)]
-    UriSegmentError(actix_web::error::UriSegmentError),
+    UriSegment(actix_web::error::UriSegmentError),
 }
 
 impl ResponseError for Error {
@@ -53,19 +53,19 @@ impl ResponseError for Error {
     }
 }
 
-const DEFAULT_CODE: &'static str = "@require: stdjabook
+const DEFAULT_CODE: &str = "@require: stdjabook
 
 document (|
-  title = {\\SATySFi;概説};
-  author = {Takashi SUWA};
+  title = {\\SATySFi; Playground};
+  author = {Your Name};
   show-title = true;
   show-toc = false;
 |) '<
     +p { Hello, \\SATySFi; Playground! }
 >";
 
-const DEFAULT_PDF: &'static str =
-    "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a";
+const DEFAULT_PDF: &str =
+    "5652e501b1475942edee2a69e75891cddb7c26195e9435da7a06fca70a3d6ffe";
 
 fn permalink(query: Path<String>) -> Result<HttpResponse, Error> {
     log::info!("permalink query = {}", query);
@@ -74,7 +74,7 @@ fn permalink(query: Path<String>) -> Result<HttpResponse, Error> {
             "index.html",
             &create_context(query.into_inner(), DEFAULT_CODE.into(), DEFAULT_PDF.into()),
         )
-        .map_err(|e| Error::TemplateError(e.description().to_owned()))?;
+        .map_err(|e| Error::Template(e.description().to_owned()))?;
     Ok(HttpResponse::Ok().content_type("text/html").body(s))
 }
 
@@ -83,12 +83,12 @@ fn index(_: HttpRequest) -> Result<HttpResponse, Error> {
         .render(
             "index.html",
             &create_context(
-                "9165b5e8141ca2457c13bf72fbf07f01e795ac5e3bb112f5ed01bc08fb9cbe1a".to_string(),
+                DEFAULT_PDF.into(),
                 DEFAULT_CODE.into(),
                 DEFAULT_PDF.into(),
             ),
         )
-        .map_err(|e| Error::TemplateError(e.description().to_owned()))?;
+        .map_err(|e| Error::Template(e.description().to_owned()))?;
     Ok(HttpResponse::Ok().content_type("text/html").body(s))
 }
 
@@ -111,18 +111,18 @@ async fn files(req: HttpRequest) -> Result<NamedFile, Error> {
     let hash: PathBuf = req
         .match_info()
         .query("hash")
-        .map_err(Error::UriSegmentError)?;
+        .map_err(Error::UriSegment)?;
     match NamedFile::open(make_output_path(&hash)) {
         Ok(file) => Ok(file),
         _ => {
-            let mut f = File::open(make_input_path(&hash)).map_err(Error::IOError)?;
+            let mut f = File::open(make_input_path(&hash)).map_err(Error::IO)?;
             let mut content = vec![];
-            f.read_to_end(&mut content).map_err(Error::IOError)?;
+            f.read_to_end(&mut content).map_err(Error::IO)?;
             let output = tokio::await!(compile(&content).map_err(|e| {
                 info!("compile error: {:?}", e);
-                Error::CompileError
+                Error::Compile
             }))?;
-            NamedFile::open(output.name).map_err(Error::IOError)
+            NamedFile::open(output.name).map_err(Error::IO)
         }
     }
 }
@@ -132,7 +132,7 @@ async fn compile_handler(input: Json<Input>) -> Result<Json<Output>, Error> {
         Ok(x) => Ok(Json(x)),
         Err(e) => {
             info!("compile error: {:?}", e);
-            Err(Error::CompileError)
+            Err(Error::Compile)
         }
     }
 }
