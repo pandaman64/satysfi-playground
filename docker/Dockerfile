@@ -1,6 +1,6 @@
-FROM pandaman64/satysfi
+FROM amutake/satysfi:slim
 
 WORKDIR /tmp
 
-ENTRYPOINT ["/home/opam/.opam/4.07/bin/satysfi", "-b", "-o", "output.pdf", "input.saty"]
+ENTRYPOINT ["satysfi", "-b", "-o", "output.pdf", "input.saty"]
 
