@@ -21,6 +21,7 @@
     in
     {
       packages.x86_64-linux.api = api.rootCrate.build;
+      packages.x86_64-linux.satysfi-docker = pkgs.callPackage (import ./satysfi-docker.nix) { };
       defaultPackage.x86_64-linux = self.packages.x86_64-linux.api;
       devShell.x86_64-linux = pkgs.mkShell {
         buildInputs = [
