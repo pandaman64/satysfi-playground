@@ -6,6 +6,6 @@ pkgs.dockerTools.buildImage {
   contents = pkgs.satysfi;
 
   config = {
-    Cmd = [ "/bin/satysfi" ];
+    Entrypoint = [ "/bin/satysfi" "-b" "-o" "/tmp/output.pdf" "/tmp/input.saty" ];
   };
 }
