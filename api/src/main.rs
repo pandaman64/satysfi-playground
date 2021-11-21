@@ -4,7 +4,7 @@ use std::{
     process::{self, Command, Stdio},
 };
 
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpResponse, HttpServer, Responder, middleware, web};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -79,6 +79,7 @@ async fn main() -> io::Result<()> {
 
     let factory = || {
         App::new()
+            .wrap(middleware::Compress::default())
             .service(compile)
             .default_service(web::route().to(|| HttpResponse::NotFound().body("Hello, World!")))
     };
