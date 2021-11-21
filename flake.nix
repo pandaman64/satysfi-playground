@@ -21,7 +21,9 @@
     in
     {
       packages.x86_64-linux.server = server.rootCrate.build;
-      packages.x86_64-linux.satysfi-docker = pkgs.callPackage (import ./satysfi-docker.nix) { };
+      packages.x86_64-linux.satysfi-docker = pkgs.callPackage ./satysfi-docker.nix { };
+
+      nixosModules.satysfi-playground = pkgs.callPackage ./service.nix { server = self.packages.x86_64-linux.server; };
 
       defaultPackage.x86_64-linux = self.packages.x86_64-linux.server;
       defaultApp.x86_64-linux = {
