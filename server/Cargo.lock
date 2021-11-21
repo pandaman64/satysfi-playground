@@ -212,18 +212,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "api"
-version = "0.1.0"
-dependencies = [
- "actix-rt",
- "actix-web",
- "base64",
- "env_logger",
- "serde",
- "tempfile",
-]
-
-[[package]]
 name = "atty"
 version = "0.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1037,6 +1025,18 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
+]
+
+[[package]]
+name = "server"
+version = "0.1.0"
+dependencies = [
+ "actix-rt",
+ "actix-web",
+ "base64",
+ "env_logger",
+ "serde",
+ "tempfile",
 ]
 
 [[package]]
