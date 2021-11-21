@@ -32,6 +32,8 @@ pkgs.nixosTest {
     finally:
       # somehow shutdown is needed to complete the test
       for machine in machines:
+        # commenting out this line causes the test to hang indefinitely
         machine.shutdown()
+        pass
   '';
 }
