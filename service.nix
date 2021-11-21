@@ -1,10 +1,11 @@
 # A NixOS module for the satysfi-playground service
-{ config, lib, pkgs, server, ... }:
+{ server }:
+{ config, lib, pkgs, ... }:
 let
   cfg = config.services.satysfi-playground;
 in
 {
-  options = {
+  options.services.satysfi-playground = {
     enable = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -23,6 +24,7 @@ in
       serviceConfig = {
         Type = "simple";
         ExecStart = "${server}/bin/server";
+        Environment = "RUST_LOG=debug";
       };
     };
   };
