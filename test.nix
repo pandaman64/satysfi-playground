@@ -19,21 +19,12 @@ pkgs.nixosTest {
   };
 
   testScript = ''
-    try:
-      start_all()
+    start_all()
 
-      server.wait_for_open_port(8080)
-      # TODO: this request fails
-      # client.succeed(
-      #   "${pkgs.curl}/bin/curl http://server:8080/"
-      # )
-    except:
-      raise
-    finally:
-      # somehow shutdown is needed to complete the test
-      for machine in machines:
-        # commenting out this line causes the test to hang indefinitely
-        machine.shutdown()
-        pass
+    server.wait_for_open_port(8080)
+    # TODO: this request fails
+    # client.succeed(
+    #   "${pkgs.curl}/bin/curl http://server:8080/"
+    # )
   '';
 }

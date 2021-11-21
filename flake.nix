@@ -1,6 +1,7 @@
 {
   description = "SATySFi Playground";
 
+  inputs.nixpkgs.url = github:NixOS/nixpkgs/nixos-21.05;
   inputs.crate2nix = {
     url = github:kolloch/crate2nix;
     flake = false;
