@@ -18,6 +18,8 @@
         })
         {
           inherit pkgs;
+          # For development speed. TODO: enable release build
+          release = false;
         });
     in
     {
