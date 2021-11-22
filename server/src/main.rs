@@ -4,7 +4,7 @@ use std::{
     process::{self, Command, Stdio},
 };
 
-use actix_web::{App, HttpResponse, HttpServer, Responder, middleware, web};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer, Responder};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -87,7 +87,7 @@ async fn main() -> io::Result<()> {
     // systemd socket activationのときはHttpServer::listen(self, lst: TcpListener)を使えそう
     HttpServer::new(factory)
         .server_hostname("satysfi-playground.tech")
-        .bind("localhost:8080")?
+        .bind("0.0.0.0:8080")?
         .run()
         .await
 }

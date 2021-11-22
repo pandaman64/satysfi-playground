@@ -22,9 +22,9 @@ pkgs.nixosTest {
     start_all()
 
     server.wait_for_open_port(8080)
-    # TODO: this request fails
-    # client.succeed(
-    #   "${pkgs.curl}/bin/curl http://server:8080/"
-    # )
+    result = client.succeed(
+      "${pkgs.curl}/bin/curl http://server:8080/"
+    )
+    assert result == "Hello, World!"
   '';
 }
