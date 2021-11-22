@@ -28,7 +28,10 @@ struct CompileResponse {
 }
 
 #[actix_web::post("/compile")]
-async fn compile(request: web::Json<CompileRequest>) -> Result<impl Responder, actix_web::Error> {
+async fn compile(
+    request: web::Json<CompileRequest>,
+    data: web::Data<Data>,
+) -> Result<impl Responder, actix_web::Error> {
     let (output, document) =
         web::block(move || -> io::Result<(process::Output, Option<Vec<u8>>)> {
             let dir = tempfile::tempdir()?;
@@ -39,7 +42,7 @@ async fn compile(request: web::Json<CompileRequest>) -> Result<impl Responder, a
                     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
             )?;
 
-            let output = Command::new("podman")
+            let output = Command::new(&data.podman)
                 .arg("run")
                 .arg("--rm")
                 .arg({
@@ -73,12 +76,29 @@ async fn compile(request: web::Json<CompileRequest>) -> Result<impl Responder, a
     }))
 }
 
+/// Application Data
+#[derive(Debug, Clone)]
+struct Data {
+    /// The path to podman executable, "podman" by default
+    podman: OsString,
+}
+
+/// Populate application data from environment variables
+fn populate_data() -> Data {
+    Data {
+        podman: std::env::var_os("PODMAN").unwrap_or_else(|| OsString::from("podman")),
+    }
+}
+
 #[actix_rt::main]
 async fn main() -> io::Result<()> {
     env_logger::init();
 
-    let factory = || {
+    let data = web::Data::new(populate_data());
+
+    let factory = move || {
         App::new()
+            .app_data(data.clone())
             .wrap(middleware::Compress::default())
             .service(compile)
             .default_service(web::route().to(|| HttpResponse::NotFound().body("Hello, World!")))

@@ -19,12 +19,32 @@ pkgs.nixosTest {
   };
 
   testScript = ''
-    start_all()
+    import base64
+    import json
+    import os
+    import os.path
 
+    start_all()
     server.wait_for_open_port(8080)
-    result = client.succeed(
-      "${pkgs.curl}/bin/curl http://server:8080/"
-    )
-    assert result == "Hello, World!"
+
+    with subtest("Healthcheck succeeds"):
+      response = client.succeed(
+        "${pkgs.curl}/bin/curl http://server:8080/healthcheck"
+      )
+      assert response == "Hello, World!"
+
+    for entry in os.scandir("${./examples}"):
+      with subtest(f"Compile {entry.name}"):
+        with open(os.path.join(entry.path, "input.saty"), "rb") as f:
+          input = f.read()
+          request = json.dumps({
+            "source": base64.b64encode(input).decode("ascii"),
+          })
+          response = json.loads(client.succeed(
+            f"${pkgs.curl}/bin/curl -d '{request}' -H 'Content-Type: application/json' -f http://server:8080/compile"
+          ))
+          response["stdout"] = base64.b64decode(response["stdout"].encode("ascii")).decode("ascii")
+          response["stderr"] = base64.b64decode(response["stderr"].encode("ascii")).decode("ascii")
+          assert response["status"] == 0, response
   '';
 }

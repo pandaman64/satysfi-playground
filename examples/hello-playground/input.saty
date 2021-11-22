@@ -1,0 +1,10 @@
+@require: stdjabook
+
+document (|
+  title = {\SATySFi; Playground};
+  author = {Your Name};
+  show-title = true;
+  show-toc = false;
+|) '<
+    +p { Hello, \SATySFi; Playground! }
+>
