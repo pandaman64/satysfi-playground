@@ -16,7 +16,7 @@ in
     };
   };
 
-  config = {
+  config = lib.mkIf cfg.enable {
     # In megabytes. The uncompressed Docker image amounts to >500MB.
     virtualisation.diskSize = 4096;
     virtualisation.podman.enable = true;
