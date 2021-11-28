@@ -17,14 +17,17 @@ mod endpoint;
 pub struct Data {
     /// The path to podman executable, "podman" by default
     podman: OsString,
+    /// S3 Endpoint
+    s3_endpoint: OsString,
     /// S3 Client
     s3_client: aws_sdk_s3::Client,
+    /// Version of the SATySFi Docker image. Used for computing build id.
+    version: OsString,
 }
 
 /// Populate application data from environment variables
 async fn populate_data() -> Data {
     let config = aws_config::load_from_env().await;
-    // let region = Region::new("ap-northeast-1");
     let s3_endpoint = std::env::var_os("S3_ENDPOINT").unwrap();
     let s3_config = aws_sdk_s3::config::Builder::from(&config)
         .endpoint_resolver(Endpoint::immutable(
@@ -35,7 +38,10 @@ async fn populate_data() -> Data {
 
     Data {
         podman: std::env::var_os("PODMAN").unwrap_or_else(|| OsString::from("podman")),
+        s3_endpoint,
         s3_client,
+        version: std::env::var_os("SATYSFI_DOCKER_VERSION")
+            .unwrap_or_else(|| OsString::from("dev")),
     }
 }
 
@@ -89,6 +95,7 @@ async fn main() -> io::Result<()> {
             .app_data(data.clone())
             .wrap(middleware::Compress::default())
             .service(endpoint::compile::post)
+            .service(endpoint::persist::post)
             .default_service(web::route().to(|| HttpResponse::NotFound().body("Hello, World!")))
     };
 

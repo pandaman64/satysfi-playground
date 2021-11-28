@@ -15,6 +15,14 @@ in
       '';
     };
 
+    logLevel = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = ''
+        RUST_LOG
+      '';
+    };
+
     s3Endpoint = lib.mkOption {
       type = lib.types.str;
       default = "http://localhost:9000";
@@ -36,6 +44,14 @@ in
       default = null;
       description = ''
         AWS_SECRET_KEY
+      '';
+    };
+
+    region = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        AWS_DEFAULT_REGION
       '';
     };
   };
@@ -67,7 +83,7 @@ in
         Environment = lib.mkMerge
           [
             [
-              "RUST_LOG=debug"
+              "RUST_LOG=${cfg.logLevel}"
               "PODMAN=${podman}/bin/podman"
               "S3_ENDPOINT=${cfg.s3Endpoint}"
             ]
@@ -76,6 +92,9 @@ in
             ])
             (lib.mkIf (cfg.secretAccessKey != null) [
               "AWS_SECRET_ACCESS_KEY=${cfg.secretAccessKey}"
+            ])
+            (lib.mkIf (cfg.region != null) [
+              "AWS_DEFAULT_REGION=${cfg.region}"
             ])
           ];
       };
