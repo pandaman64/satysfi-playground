@@ -6,8 +6,9 @@
     url = github:kolloch/crate2nix;
     flake = false;
   };
+  inputs.naersk.url = github:nix-community/naersk;
 
-  outputs = { self, nixpkgs, crate2nix }:
+  outputs = { self, nixpkgs, crate2nix, naersk }:
     let
       pkgs = nixpkgs.legacyPackages."x86_64-linux";
       inherit (import "${crate2nix}/tools.nix" { inherit pkgs; }) generatedCargoNix;
@@ -21,9 +22,11 @@
           # For development speed. TODO: enable release build
           release = false;
         });
+      naersk-lib = naersk.lib.x86_64-linux;
     in
     {
-      packages.x86_64-linux.server = server.rootCrate.build;
+      # packages.x86_64-linux.server-crate2nix = server.rootCrate.build;
+      packages.x86_64-linux.server = naersk-lib.buildPackage ./server;
       packages.x86_64-linux.satysfi-docker = pkgs.callPackage ./satysfi-docker.nix { };
 
       nixosModules.satysfi-playground = import ./service.nix {

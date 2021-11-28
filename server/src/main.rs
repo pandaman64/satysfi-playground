@@ -1,10 +1,14 @@
 use std::{
+    convert::TryFrom,
     ffi::OsString,
     fs, io,
+    os::unix::prelude::OsStrExt,
     process::{self, Command, Stdio},
 };
 
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use aws_sdk_s3::{Client, Endpoint};
+use http::Uri;
 
 mod endpoint;
 
@@ -13,12 +17,25 @@ mod endpoint;
 pub struct Data {
     /// The path to podman executable, "podman" by default
     podman: OsString,
+    /// S3 Client
+    s3_client: aws_sdk_s3::Client,
 }
 
 /// Populate application data from environment variables
-fn populate_data() -> Data {
+async fn populate_data() -> Data {
+    let config = aws_config::load_from_env().await;
+    // let region = Region::new("ap-northeast-1");
+    let s3_endpoint = std::env::var_os("S3_ENDPOINT").unwrap();
+    let s3_config = aws_sdk_s3::config::Builder::from(&config)
+        .endpoint_resolver(Endpoint::immutable(
+            Uri::try_from(s3_endpoint.as_bytes()).unwrap(),
+        ))
+        .build();
+    let s3_client = Client::from_conf(s3_config);
+
     Data {
         podman: std::env::var_os("PODMAN").unwrap_or_else(|| OsString::from("podman")),
+        s3_client,
     }
 }
 
@@ -65,7 +82,7 @@ fn podman(
 async fn main() -> io::Result<()> {
     env_logger::init();
 
-    let data = web::Data::new(populate_data());
+    let data = web::Data::new(populate_data().await);
 
     let factory = move || {
         App::new()

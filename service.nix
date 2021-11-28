@@ -14,6 +14,30 @@ in
         Whether to enable the SATySFi Playground web service daemon.
       '';
     };
+
+    s3Endpoint = lib.mkOption {
+      type = lib.types.str;
+      default = "http://localhost:9000";
+      description = ''
+        The URL of the S3 endpoint
+      '';
+    };
+
+    accessKeyId = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        AWS_ACCESS_KEY_ID
+      '';
+    };
+
+    secretAccessKey = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = ''
+        AWS_SECRET_KEY
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -40,10 +64,20 @@ in
       serviceConfig = {
         Type = "simple";
         ExecStart = "${server}/bin/server";
-        Environment = [
-          "RUST_LOG=debug"
-          "PODMAN=${podman}/bin/podman"
-        ];
+        Environment = lib.mkMerge
+          [
+            [
+              "RUST_LOG=debug"
+              "PODMAN=${podman}/bin/podman"
+              "S3_ENDPOINT=${cfg.s3Endpoint}"
+            ]
+            (lib.mkIf (cfg.accessKeyId != null) [
+              "AWS_ACCESS_KEY_ID=${cfg.accessKeyId}"
+            ])
+            (lib.mkIf (cfg.secretAccessKey != null) [
+              "AWS_SECRET_ACCESS_KEY=${cfg.secretAccessKey}"
+            ])
+          ];
       };
     };
   };

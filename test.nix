@@ -13,6 +13,13 @@ pkgs.nixosTest {
       };
 
       services.satysfi-playground.enable = true;
+
+      services.minio = {
+        enable = true;
+        accessKey = "minio-access-key";
+        secretKey = "minio-secret-key";
+        region = "ap-northeast-1";
+      };
     };
 
     client = { ... }: { };
@@ -25,6 +32,7 @@ pkgs.nixosTest {
     import os.path
 
     start_all()
+    server.wait_for_unit("satysfi-playground.service")
     server.wait_for_open_port(8080)
 
     with subtest("Healthcheck succeeds"):
