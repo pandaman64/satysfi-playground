@@ -21,17 +21,19 @@ pkgs.nixosTest {
 
       networking.firewall = {
         enable = true;
-        allowedTCPPorts = [ 8080 ];
+        allowedTCPPorts = [ 8080 9000 ];
       };
 
       services.satysfi-playground = {
         enable = true;
         logLevel = "DEBUG";
+        s3Endpoint = "http://server:9000";
         inherit accessKeyId secretAccessKey region;
       };
 
       services.minio = {
         enable = true;
+        listenAddress = "0.0.0.0:9000";
         accessKey = accessKeyId;
         secretKey = secretAccessKey;
         inherit region;
@@ -109,8 +111,8 @@ pkgs.nixosTest {
 
           # All files are stored in S3.
           # `-o /dev/null` is required because otherwise curl returns error code 23 if the content is a binary.
-          server.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/stdout.txt'""")
-          server.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/stderr.txt'""")
-          server.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/document.pdf'""")
+          client.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/stdout.txt'""")
+          client.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/stderr.txt'""")
+          client.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/document.pdf'""")
   '';
 }

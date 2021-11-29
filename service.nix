@@ -25,7 +25,6 @@ in
 
     s3Endpoint = lib.mkOption {
       type = lib.types.str;
-      default = "http://localhost:9000";
       description = ''
         The URL of the S3 endpoint
       '';
