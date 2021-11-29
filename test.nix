@@ -1,9 +1,16 @@
 # NixOS tests for SATySFi Playground
-{ pkgs, system, satysfi-playground, ... }:
+{ pkgs, lib, system, satysfi-playground, ... }:
 let
   region = "ap-northeast-1";
   accessKeyId = "minio-access-key";
   secretAccessKey = "minio-secret-key";
+  # Minio Client seems to need getent in path
+  mc = pkgs.minio-client.overrideAttrs (oldAttrs: {
+    buildInputs = (oldAttrs.buildInputs or [ ]) ++ [ pkgs.makeWrapper ];
+    postInstall = (oldAttrs.postInstall or "") + ''
+      wrapProgram "$out/bin/mc" --prefix PATH : ${lib.makeBinPath [ pkgs.getent ]}
+    '';
+  });
 in
 pkgs.nixosTest {
   inherit system;
@@ -31,22 +38,31 @@ pkgs.nixosTest {
       };
 
       systemd.services.create-bucket = {
-        description = ''Create S3 buckets neccessary for SATySFi Playground'';
+        description = ''Create Minio buckets neccessary for SATySFi Playground'';
         after = [ "minio.service" ];
         before = [ "satysfi-playground.service" ];
         requiredBy = [ "satysfi-playground.service" ];
-
         serviceConfig = {
           Type = "oneshot";
-          ExecStart = pkgs.writeShellScript "create-bucket" ''
-            ${pkgs.awscli2}/bin/aws --endpoint-url http://localhost:9000 s3 mb s3://satysfi-playground
-          '';
-          Environment = [
-            "AWS_ACCESS_KEY_ID=${accessKeyId}"
-            "AWS_SECRET_ACCESS_KEY=${secretAccessKey}"
-            "AWS_DEFAULT_REGION=${region}"
-          ];
         };
+        script = ''
+          set -euo pipefail
+
+          # Minio requires a writable directory for configurations
+          CONFIG_DIR=$(mktemp -d)
+
+          # Loop until `mc alias` succeeds because it fails if Minio server has not started yet.
+          sleep 1
+          while ! ${mc}/bin/mc -C "$CONFIG_DIR" alias set local http://localhost:9000 ${accessKeyId} ${secretAccessKey}
+          do
+            sleep 1
+          done
+          ${mc}/bin/mc -C "$CONFIG_DIR" alias set local http://localhost:9000 ${accessKeyId} ${secretAccessKey}
+          ${mc}/bin/mc -C "$CONFIG_DIR" mb --region='${region}' local/satysfi-playground
+          # The access policy is a Minio-specific part.
+          # If we use S3 in production, we need to figure out a way to allow public access with S3.
+          ${mc}/bin/mc -C "$CONFIG_DIR" policy set download local/satysfi-playground
+        '';
       };
     };
 
@@ -91,10 +107,10 @@ pkgs.nixosTest {
           ))
           assert response["status"] == 0, response
 
-          # All files are stored in S3
-          # TODO: enable this test
-          # client.succeed(f"""${pkgs.curl}/bin/curl -f '{response["s3_url"]}/stdout.txt'""")
-          # client.succeed(f"""${pkgs.curl}/bin/curl -f '{response["s3_url"]}/stderr.txt'""")
-          # client.succeed(f"""${pkgs.curl}/bin/curl -f '{response["s3_url"]}/document.pdf'""")
+          # All files are stored in S3.
+          # `-o /dev/null` is required because otherwise curl returns error code 23 if the content is a binary.
+          server.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/stdout.txt'""")
+          server.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/stderr.txt'""")
+          server.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/document.pdf'""")
   '';
 }
