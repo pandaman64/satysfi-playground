@@ -50,6 +50,9 @@
           pkgs.rustup
           pkgs.cargo-edit
           pkgs.nixpkgs-fmt
+          pkgs.jq
+          pkgs.minio-client
+          pkgs.curl
         ];
       };
     };
