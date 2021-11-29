@@ -46,6 +46,7 @@ pkgs.nixosTest {
         requiredBy = [ "satysfi-playground.service" ];
         serviceConfig = {
           Type = "oneshot";
+          TimeoutStartSec = "10s";
         };
         script = ''
           set -euo pipefail
