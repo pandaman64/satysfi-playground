@@ -34,6 +34,11 @@
         satysfi-docker = self.packages.x86_64-linux.satysfi-docker;
       };
 
+      nixosConfigurations.satysfi-playground = import ./nixos-configuration.nix {
+        inherit self nixpkgs;
+        system = "x86_64-linux";
+      };
+
       defaultPackage.x86_64-linux = self.packages.x86_64-linux.server;
       defaultApp.x86_64-linux = {
         type = "app";
