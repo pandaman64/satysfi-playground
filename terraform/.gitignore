@@ -1,0 +1,7 @@
+**/.terraform/*
+
+*.tfstate
+*.tfstate*
+*.tfvars
+
+id_rsa.pem

@@ -10,8 +10,9 @@ nixpkgs.lib.nixosSystem {
 
       system.configurationRevision = nixpkgs.lib.mkIf (self ? rev) self.rev;
 
-      networking.firewall.allowedTCPPorts = [ 22 ];
+      networking.firewall.allowedTCPPorts = [ 22 80 ];
 
+      services.nginx.enable = true;
     })
   ];
 }
