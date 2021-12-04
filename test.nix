@@ -17,6 +17,10 @@ pkgs.nixosTest {
 
   nodes = {
     server = { config, pkgs, ... }: {
+      # In megabytes. The uncompressed Docker image amounts to >500MB.
+      virtualisation.diskSize = 4096;
+      virtualisation.podman.enable = true;
+
       imports = [ satysfi-playground ];
 
       networking.firewall = {

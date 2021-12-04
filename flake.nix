@@ -1,7 +1,7 @@
 {
   description = "SATySFi Playground";
 
-  inputs.nixpkgs.url = github:NixOS/nixpkgs/nixos-21.05;
+  inputs.nixpkgs.url = github:NixOS/nixpkgs/nixos-21.11;
   inputs.crate2nix = {
     url = github:kolloch/crate2nix;
     flake = false;
@@ -40,6 +40,7 @@
         program = "${self.packages.x86_64-linux.server}/bin/server";
       };
 
+      # TODO: format/lint Rust/Terraform/Nix, local snapshot testing (maybe)
       checks.x86_64-linux.satysfi-playground = pkgs.callPackage ./test.nix {
         system = "x86_64-linux";
         satysfi-playground = self.nixosModules.satysfi-playground;
@@ -53,6 +54,8 @@
           pkgs.jq
           pkgs.minio-client
           pkgs.curl
+          pkgs.awscli2
+          pkgs.terraform
         ];
       };
     };

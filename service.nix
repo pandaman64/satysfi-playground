@@ -56,10 +56,6 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # In megabytes. The uncompressed Docker image amounts to >500MB.
-    virtualisation.diskSize = 4096;
-    virtualisation.podman.enable = true;
-
     # Oneshot unit for loading SATySFi Docker image into Podman
     systemd.services.load-satysfi-docker = {
       description = "SATySFi Playground Docker Image Loader";
