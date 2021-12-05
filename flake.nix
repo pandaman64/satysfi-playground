@@ -100,8 +100,16 @@
           pkgs.jq
           pkgs.minio-client
           pkgs.curl
-          pkgs.awscli2
+          # awscli2 pollutes PYTHONPATH, which makes nixos-test-driver unrunnable.
+          # https://github.com/NixOS/nixpkgs/issues/47900
+          (
+            pkgs.writeShellScriptBin "aws" ''
+              unset PYTHONPATH
+              exec ${pkgs.awscli2}/bin/aws "$@"
+            ''
+          )
           pkgs.terraform
+          pkgs.nixos-option
         ];
       };
     };
