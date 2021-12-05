@@ -56,6 +56,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    virtualisation.podman.enable = true;
+
     # Oneshot unit for loading SATySFi Docker image into Podman
     systemd.services.load-satysfi-docker = {
       description = "SATySFi Playground Docker Image Loader";
