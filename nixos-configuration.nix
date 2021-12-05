@@ -1,4 +1,4 @@
-{ self, nixpkgs, system }:
+{ nixpkgs, system }:
 nixpkgs.lib.nixosSystem {
   inherit system;
 
@@ -7,8 +7,6 @@ nixpkgs.lib.nixosSystem {
       imports = [
         "${nixpkgs}/nixos/modules/virtualisation/amazon-image.nix"
       ];
-
-      system.configurationRevision = nixpkgs.lib.mkIf (self ? rev) self.rev;
 
       networking.firewall.allowedTCPPorts = [ 22 80 ];
 
