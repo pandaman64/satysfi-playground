@@ -42,6 +42,7 @@
 
       nixosConfigurations.satysfi-playground = import ./nixos-configuration.nix {
         inherit nixpkgs system;
+        nixosModule = nixosModules.satysfi-playground;
       };
 
       defaultPackage.${system} = packages.${system}.server;
