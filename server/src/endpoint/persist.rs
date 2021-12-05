@@ -21,7 +21,7 @@ pub struct Response {
     /// When the process is terminated by signal, this field is None. For more detail, please consult [`std::process::ExitStatus::code`].
     status: Option<i32>,
     /// Common part of the S3 URLs
-    s3_url: Option<String>,
+    s3_url: String,
 }
 
 async fn put_objects(
@@ -29,7 +29,7 @@ async fn put_objects(
     build_id: &str,
     stdout: Vec<u8>,
     stderr: Vec<u8>,
-    document: Vec<u8>,
+    document: Option<Vec<u8>>,
 ) -> Result<(), actix_web::Error> {
     use actix_web::error::ErrorInternalServerError;
     const BUCKET: &str = "satysfi-playground";
@@ -52,15 +52,17 @@ async fn put_objects(
             .body(ByteStream::from(stderr))
             .send(),
     );
-    let document = spawn(
-        data.s3_client
-            .put_object()
-            .bucket(BUCKET)
-            .key(format!("{}/document.pdf", build_id))
-            .content_type("application/pdf")
-            .body(ByteStream::from(document))
-            .send(),
-    );
+    let document = document.map(|document| {
+        spawn(
+            data.s3_client
+                .put_object()
+                .bucket(BUCKET)
+                .key(format!("{}/document.pdf", build_id))
+                .content_type("application/pdf")
+                .body(ByteStream::from(document))
+                .send(),
+        )
+    });
 
     stdout
         .await
@@ -70,12 +72,12 @@ async fn put_objects(
         .await
         .map_err(ErrorInternalServerError)?
         .map_err(ErrorInternalServerError)?;
-    document
-        .await
-        .map_err(ErrorInternalServerError)?
-        .map_err(ErrorInternalServerError)?;
-
-    tracing::info!("DONE persist");
+    if let Some(document) = document {
+        document
+            .await
+            .map_err(ErrorInternalServerError)?
+            .map_err(ErrorInternalServerError)?;
+    }
 
     Ok(())
 }
@@ -99,7 +101,7 @@ pub async fn post(
     let (output, document) =
         web::block(podman(request.into_inner().source, data.clone())).await??;
 
-    let s3_url = if let Some(document) = document {
+    let s3_url =  {
         put_objects(
             data.clone(),
             &build_id,
@@ -109,13 +111,11 @@ pub async fn post(
         )
         .await?;
 
-        Some(format!(
-            "{}/satysfi-playground/{}",
-            std::str::from_utf8(data.s3_endpoint.as_bytes()).unwrap(),
+        format!(
+            "{}/{}",
+            std::str::from_utf8(data.s3_public_endpoint.as_bytes()).unwrap(),
             build_id
-        ))
-    } else {
-        None
+        )
     };
 
     Ok(web::Json(Response {

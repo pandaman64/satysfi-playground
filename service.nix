@@ -23,10 +23,17 @@ in
       '';
     };
 
-    s3Endpoint = lib.mkOption {
+    s3ApiEndpoint = lib.mkOption {
       type = lib.types.str;
       description = ''
-        The URL of the S3 endpoint
+        The URL of the S3 REST API endpoint
+      '';
+    };
+
+    s3PublicEndpoint = lib.mkOption {
+      type = lib.types.str;
+      description = ''
+        The URL of the S3 Public endpoint
       '';
     };
 
@@ -77,12 +84,14 @@ in
       serviceConfig = {
         Type = "simple";
         ExecStart = "${server}/bin/server";
+        # TODO: SATYSFI_DOCKER_VERSION
         Environment = lib.mkMerge
           [
             [
               "RUST_LOG=${cfg.logLevel}"
               "PODMAN=${podman}/bin/podman"
-              "S3_ENDPOINT=${cfg.s3Endpoint}"
+              "S3_API_ENDPOINT=${cfg.s3ApiEndpoint}"
+              "S3_PUBLIC_ENDPOINT=${cfg.s3PublicEndpoint}"
             ]
             (lib.mkIf (cfg.accessKeyId != null) [
               "AWS_ACCESS_KEY_ID=${cfg.accessKeyId}"

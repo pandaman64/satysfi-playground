@@ -30,7 +30,9 @@ pkgs.nixosTest {
       services.satysfi-playground = {
         enable = true;
         logLevel = "DEBUG";
-        s3Endpoint = "http://server:9000";
+        # I could'nt successfully run tests with virtual hosted-style buckets. So we use path-style buckets here.
+        s3ApiEndpoint = "http://server:9000";
+        s3PublicEndpoint = "http://server:9000/satysfi-playground";
         inherit accessKeyId secretAccessKey region;
       };
 
@@ -63,7 +65,6 @@ pkgs.nixosTest {
           do
             sleep 1
           done
-          ${mc}/bin/mc -C "$CONFIG_DIR" alias set local http://localhost:9000 ${accessKeyId} ${secretAccessKey}
           ${mc}/bin/mc -C "$CONFIG_DIR" mb --region='${region}' local/satysfi-playground
           # The access policy is a Minio-specific part.
           # If we use S3 in production, we need to figure out a way to allow public access with S3.

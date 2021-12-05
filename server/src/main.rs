@@ -17,8 +17,10 @@ mod endpoint;
 pub struct Data {
     /// The path to podman executable, "podman" by default
     podman: OsString,
-    /// S3 Endpoint
-    s3_endpoint: OsString,
+    /// S3 API Endpoint
+    s3_api_endpoint: OsString,
+    /// S3 Public Access Endpoint
+    s3_public_endpoint: OsString,
     /// S3 Client
     s3_client: aws_sdk_s3::Client,
     /// Version of the SATySFi Docker image. Used for computing build id.
@@ -28,17 +30,19 @@ pub struct Data {
 /// Populate application data from environment variables
 async fn populate_data() -> Data {
     let config = aws_config::load_from_env().await;
-    let s3_endpoint = std::env::var_os("S3_ENDPOINT").unwrap();
+    let s3_api_endpoint = std::env::var_os("S3_API_ENDPOINT").unwrap();
+    let s3_public_endpoint = std::env::var_os("S3_PUBLIC_ENDPOINT").unwrap();
     let s3_config = aws_sdk_s3::config::Builder::from(&config)
         .endpoint_resolver(Endpoint::immutable(
-            Uri::try_from(s3_endpoint.as_bytes()).unwrap(),
+            Uri::try_from(s3_api_endpoint.as_bytes()).unwrap(),
         ))
         .build();
     let s3_client = Client::from_conf(s3_config);
 
     Data {
         podman: std::env::var_os("PODMAN").unwrap_or_else(|| OsString::from("podman")),
-        s3_endpoint,
+        s3_api_endpoint,
+        s3_public_endpoint,
         s3_client,
         version: std::env::var_os("SATYSFI_DOCKER_VERSION")
             .unwrap_or_else(|| OsString::from("dev")),
