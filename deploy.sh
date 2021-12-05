@@ -17,7 +17,7 @@ PUBLIC_IP=$(
 )
 
 # Update the machine with the latest NixOS configuration.
-nixos-rebuild switch --target-host "root@$PUBLIC_IP" --flake '.#satysfi-playground'
+nixos-rebuild switch --target-host "root@${PUBLIC_IP}" --flake '.#satysfi-playground'
 
 # Done.
-echo "$PUBLIC_IP"
+echo "${PUBLIC_IP}"

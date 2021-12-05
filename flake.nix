@@ -50,8 +50,42 @@
         program = "${packages.${system}.server}/bin/server";
       };
 
-      # TODO: format/lint Rust/Terraform/Nix, local snapshot testing (maybe)
+      # TODO: Rust checks should be done inside the server derivation
       checks.${system} = {
+        # TODO: Add tflint
+        terraform = pkgs.runCommand "terraform-check"
+          {
+            buildInputs = [ pkgs.terraform ];
+          } ''
+          set -euo pipefail
+
+          cd "${./terraform}"
+          terraform fmt -check
+
+          touch $out
+        '';
+        nix = pkgs.runCommand "nix-check"
+          {
+            buildInputs = [ pkgs.nixpkgs-fmt ];
+          } ''
+          set -euo pipefail
+
+          cd "${./.}"
+          nixpkgs-fmt --check *.nix
+
+          touch $out
+        '';
+        bash = pkgs.runCommand "bash-check"
+          {
+            buildInputs = [ pkgs.shellcheck ];
+          } ''
+          set -euo pipefail
+
+          cd "${./.}"
+          shellcheck -o all *.sh
+
+          touch $out
+        '';
         satysfi-playground = pkgs.callPackage ./test.nix {
           inherit system;
           satysfi-playground = nixosModules.satysfi-playground;
