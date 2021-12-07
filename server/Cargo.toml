@@ -6,10 +6,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-rt = "2.2.0"
-actix-web = "4.0.0-beta.9"
-aws-config = "0.0.26-alpha"
-aws-sdk-s3 = "0.0.26-alpha"
+actix-rt = "2.5.0"
+actix-web = "4.0.0-beta.13"
+aws-config = "0.2.0"
+aws-sdk-s3 = "0.2.0"
 base64 = "0.13.0"
 env_logger = "0.9.0"
 hex = "0.4.3"
