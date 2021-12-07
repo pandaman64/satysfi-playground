@@ -22,7 +22,7 @@ pub struct Data {
     /// S3 Public Access Endpoint
     s3_public_endpoint: OsString,
     /// S3 Client
-    s3_client: aws_sdk_s3::Client,
+    s3_client: Client,
     /// Version of the SATySFi Docker image. Used for computing build id.
     version: OsString,
 }
