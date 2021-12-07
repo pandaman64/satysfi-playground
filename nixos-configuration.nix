@@ -11,11 +11,11 @@ nixpkgs.lib.nixosSystem {
 
       networking.firewall.allowedTCPPorts = [ 22 8080 ];
 
-      services.satysfi-playground = {
+      services.satysfi-playground = rec {
         enable = true;
         logLevel = "DEBUG";
-        s3ApiEndpoint = "https://satysfi-playground.s3.amazonaws.com";
-        s3PublicEndpoint = "https://satysfi-playground.s3.amazonaws.com/satysfi-playground";
+        s3ApiEndpoint = "https://s3.${region}.amazonaws.com";
+        s3PublicEndpoint = "https://satysfi-playground.s3.amazonaws.com";
         region = "ap-northeast-1";
       };
     })
