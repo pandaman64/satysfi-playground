@@ -101,7 +101,7 @@ pub async fn post(
     let (output, document) =
         web::block(podman(request.into_inner().source, data.clone())).await??;
 
-    let s3_url =  {
+    let s3_url = {
         put_objects(
             data.clone(),
             &build_id,
