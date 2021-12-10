@@ -119,6 +119,45 @@ in
             ];
 
           User = user;
+
+          # Security and Sandboxing settings
+          PrivateMounts = true;
+          PrivateUsers = true;
+          PrivateTmp = true;
+          # The following options must be disabled to run podman.
+          # PrivateDevices = true;
+          # PrivateNetwork = true;
+
+          CapabilityBoundingSet = "";
+
+          RestrictAddressFamilies = [
+            # We need internet access for S3.
+            # Note: incoming request can use systemd's socket activation.
+            "AF_INET"
+            "AF_INET6"
+            # Needed for journald
+            "AF_UNIX"
+          ];
+
+          # Podman relies on user namespaces.
+          RestrictNamespaces = false;
+          RestrictRealtime = true;
+          RestrictSUIDSGID = true;
+
+          NoNewPrivileges = true;
+          ProtectKernelLogs = true;
+          # Somehow this does not work
+          ProtectKernelModuels = true;
+          ProtectKernelTunables = true;
+          ProtectProc = "noaccess";
+
+          # According to systemd-analyze security
+          SystemCallArchitectures = "native";
+          # TODO: SystemCallFilter
+
+          MemoryDenyWriteExecute = true;
+
+          RemoveIPC = true;
         };
       };
     }
