@@ -62,7 +62,6 @@ pkgs.nixosTest {
           CONFIG_DIR=$(mktemp -d)
 
           # Loop until `mc alias` succeeds because it fails if Minio server has not started yet.
-          sleep 1
           while ! ${mc}/bin/mc -C "$CONFIG_DIR" alias set local http://localhost:9000 ${accessKeyId} ${secretAccessKey}
           do
             sleep 1
