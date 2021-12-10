@@ -111,6 +111,7 @@
           )
           pkgs.terraform
           pkgs.nixos-option
+          pkgs.shellcheck
         ];
       };
     };

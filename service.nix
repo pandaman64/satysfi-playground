@@ -84,12 +84,12 @@ in
       serviceConfig = {
         Type = "simple";
         ExecStart = "${server}/bin/server";
-        # TODO: SATYSFI_DOCKER_VERSION
         Environment = lib.mkMerge
           [
             [
               "RUST_LOG=${cfg.logLevel}"
               "PODMAN=${podman}/bin/podman"
+              "SATYSFI_DOCKER_VERSION=${satysfi-docker}"
               "S3_API_ENDPOINT=${cfg.s3ApiEndpoint}"
               "S3_PUBLIC_ENDPOINT=${cfg.s3PublicEndpoint}"
             ]
