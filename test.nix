@@ -53,8 +53,14 @@ pkgs.nixosTest {
         requiredBy = [ "satysfi-playground.service" ];
         serviceConfig = {
           Type = "oneshot";
-          TimeoutStartSec = "10s";
+          TimeoutStartSec = "15s";
         };
+        preStart = ''
+          while ! ${pkgs.ncat}/bin/ncat -v localhost 9000
+          do
+            sleep 1
+          done
+        '';
         script = ''
           set -euo pipefail
 
