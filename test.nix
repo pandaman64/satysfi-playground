@@ -39,8 +39,10 @@ pkgs.nixosTest {
       services.minio = {
         enable = true;
         listenAddress = "0.0.0.0:9000";
-        accessKey = accessKeyId;
-        secretKey = secretAccessKey;
+        rootCredentialsFile = pkgs.writeText "minio-credentials" ''
+          MINIO_ROOT_USER=${accessKeyId}
+          MINIO_ROOT_PASSWORD=${secretAccessKey}
+        '';
         inherit region;
       };
 
