@@ -34,12 +34,12 @@
         satysfi-docker = pkgs.callPackage ./satysfi-docker.nix { };
       };
 
-      # TODO: figure out how to abstact out systems when we define nixosModules/nixosConfiguraions
-      nixosModules.satysfi-playground = import ./service.nix {
+      nixosModules.satysfi-playground = import ./service.nix (system: {
         server = packages.${system}.server;
         satysfi-docker = packages.${system}.satysfi-docker;
-      };
+      });
 
+      # TODO: figure out how to abstact out systems when we define nixosConfiguraions
       nixosConfigurations.satysfi-playground = import ./nixos-configuration.nix {
         inherit nixpkgs system;
         nixosModule = nixosModules.satysfi-playground;

@@ -1,7 +1,9 @@
 # A NixOS module for the satysfi-playground service
-{ server, satysfi-docker }:
+# genPackages: system -> { server, satysfi-docker }
+genPackages:
 { config, lib, pkgs, ... }:
 let
+  inherit (genPackages pkgs.system) server satysfi-docker;
   cfg = config.services.satysfi-playground;
   podman = config.virtualisation.podman.package;
   user = "satysfi-playground";
