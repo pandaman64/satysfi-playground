@@ -101,6 +101,7 @@
           pkgs.nodejs
           pkgs.nixpkgs-fmt
           pkgs.jq
+          pkgs.ncat
           pkgs.minio-client
           pkgs.curl
           # awscli2 pollutes PYTHONPATH, which makes nixos-test-driver unrunnable.
