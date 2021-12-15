@@ -1,25 +1,5 @@
 {
   "nodes": {
-    "arion": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1635858817,
-        "narHash": "sha256-tMQ/2Vkv3zpTwXqCfgStaAsj9I2HPNHVi1BLd1jFFjU=",
-        "owner": "hercules-ci",
-        "repo": "arion",
-        "rev": "db6d4d7490dff363de60cebbece3ae9361e3ce43",
-        "type": "github"
-      },
-      "original": {
-        "owner": "hercules-ci",
-        "repo": "arion",
-        "type": "github"
-      }
-    },
     "crate2nix": {
       "flake": false,
       "locked": {
@@ -86,7 +66,6 @@
     },
     "root": {
       "inputs": {
-        "arion": "arion",
         "crate2nix": "crate2nix",
         "naersk": "naersk",
         "nixpkgs": "nixpkgs_2"

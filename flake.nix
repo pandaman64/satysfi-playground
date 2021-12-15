@@ -7,9 +7,8 @@
     flake = false;
   };
   inputs.naersk.url = github:nix-community/naersk;
-  inputs.arion.url = github:hercules-ci/arion;
 
-  outputs = { self, nixpkgs, crate2nix, naersk, arion }:
+  outputs = { self, nixpkgs, crate2nix, naersk }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
@@ -29,11 +28,6 @@
       naersk-lib = naersk.lib.${system};
     in
     rec {
-      # For arion-pkgs.nix
-      pkgs-for-arion = pkgs.extend (final: prev: {
-        satysfi-playground-module = nixosModules.satysfi-playground;
-      });
-
       packages.${system} = {
         # server-crate2nix = server.rootCrate.build;
         server = naersk-lib.buildPackage ./server;
@@ -120,7 +114,6 @@
           pkgs.terraform
           pkgs.nixos-option
           pkgs.shellcheck
-          arion.packages.${system}.arion
         ];
       };
     };
