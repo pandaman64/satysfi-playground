@@ -6,6 +6,7 @@ use std::{
     process::{self, Command, Stdio},
 };
 
+use actix_cors::Cors;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use aws_sdk_s3::{Client, Endpoint};
 use http::Uri;
@@ -95,9 +96,12 @@ async fn main() -> io::Result<()> {
     let data = web::Data::new(populate_data().await);
 
     let factory = move || {
+        let cors = Cors::permissive();
+
         App::new()
             .app_data(data.clone())
             .wrap(middleware::Compress::default())
+            .wrap(cors)
             .service(endpoint::compile::post)
             .service(endpoint::persist::post)
             .default_service(web::route().to(|| HttpResponse::NotFound().body("Hello, World!")))

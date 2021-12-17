@@ -84,7 +84,6 @@ pkgs.nixosTest {
   };
 
   testScript = ''
-    import base64
     import json
     import os
     import os.path
@@ -100,29 +99,30 @@ pkgs.nixosTest {
       assert response == "Hello, World!"
 
     for entry in os.scandir("${./examples}"):
-      with open(os.path.join(entry.path, "input.saty"), "rb") as f:
+      with open(os.path.join(entry.path, "input.saty"), "r") as f:
         input = f.read()
         request = json.dumps({
-          "source": base64.b64encode(input).decode("ascii"),
+          "source": input,
         })
 
         with subtest(f"Compile {entry.name}"):
           response = json.loads(client.succeed(
-            f"${pkgs.curl}/bin/curl -d '{request}' -H 'Content-Type: application/json' -f http://server:8080/compile"
+            "${pkgs.curl}/bin/curl -d @- -H 'Content-Type: application/json' -f http://server:8080/compile"
+            f"""<<"EOS"\n{request}\nEOS\n"""
           ))
-          response["stdout"] = base64.b64decode(response["stdout"].encode("ascii")).decode("ascii")
-          response["stderr"] = base64.b64decode(response["stderr"].encode("ascii")).decode("ascii")
           assert response["status"] == 0, response
 
         with subtest(f"Persist {entry.name}"):
           # Request to /persist must succeed
           response = json.loads(client.succeed(
-            f"${pkgs.curl}/bin/curl -d '{request}' -H 'Content-Type: application/json' -f http://server:8080/persist"
+            "${pkgs.curl}/bin/curl -d @- -H 'Content-Type: application/json' -f http://server:8080/persist"
+            f"""<<"EOS"\n{request}\nEOS\n"""
           ))
           assert response["status"] == 0, response
 
           # All files are stored in S3.
           # `-o /dev/null` is required because otherwise curl returns error code 23 if the content is a binary.
+          client.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/input.saty'""")
           client.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/stdout.txt'""")
           client.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/stderr.txt'""")
           client.succeed(f"""${pkgs.curl}/bin/curl -fs -o /dev/null '{response["s3_url"]}/document.pdf'""")
