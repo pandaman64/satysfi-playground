@@ -14,10 +14,15 @@ export S3_API_ENDPOINT='http://localhost:9000'
 export S3_PUBLIC_ENDPOINT='http://localhost:9000/satysfi-playground'
 export RUST_LOG='DEBUG'
 
+# Object storage
 podman run --rm -p 9000:9000 -p 9001:9001 \
     quay.io/minio/minio server /data --console-address ':9001' &
 
+# API
 nix run &
+
+# Frontend server
+(cd "$(dirname -- "${BASH_SOURCE[0]}")/frontend" || exit; npm run dev) &
 
 # Set up buckets
 while ! ncat -v localhost 9000 < /dev/null
