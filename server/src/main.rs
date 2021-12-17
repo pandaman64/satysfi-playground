@@ -60,7 +60,7 @@ fn podman(
         let input_path = dir.path().join("input.saty");
         fs::write(
             input_path,
-            base64::decode(&source).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
+            source,
         )?;
 
         let output = Command::new(&data.podman)
@@ -86,6 +86,13 @@ fn podman(
 
         // TODO: close the temporary directory and emit log if an error occurs
         Ok((output, document))
+    }
+}
+
+fn from_utf8_lossy(buffer: Vec<u8>) -> String {
+    match String::from_utf8(buffer) {
+        Ok(s) => s,
+        Err(e) => String::from_utf8_lossy(e.as_bytes()).into(),
     }
 }
 

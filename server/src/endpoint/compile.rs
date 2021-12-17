@@ -1,11 +1,11 @@
 use actix_web::{web, Responder};
 use serde::{Deserialize, Serialize};
 
-use crate::{podman, Data};
+use crate::{podman, Data, from_utf8_lossy};
 
 #[derive(Deserialize)]
 pub struct Request {
-    /// The SATySFi source in base64-encoded string.
+    /// The SATySFi source. We accept only UTF-8 encoded string.
     source: String,
 }
 
@@ -32,8 +32,8 @@ pub async fn post(
 
     Ok(web::Json(Response {
         status: output.status.code(),
-        stdout: base64::encode(output.stdout),
-        stderr: base64::encode(output.stderr),
+        stdout: from_utf8_lossy(output.stdout),
+        stderr: from_utf8_lossy(output.stderr),
         document: document.map(base64::encode),
     }))
 }
