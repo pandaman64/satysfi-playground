@@ -3,19 +3,26 @@ import Editor from "@monaco-editor/react"
 import { useRef, useState, VFC } from "react"
 import { Button, Tab, TabList, TabPanel, TabPanels, Tabs, Textarea } from '@chakra-ui/react'
 import Head from 'next/head'
-
+import useSWR from 'swr'
+import { useRouter } from 'next/router'
 import styles from '../styles/Home.module.css'
 
+function generatePdfIframe(s3Url: string): JSX.Element {
+  return <iframe src={`${s3Url}/document.pdf`} width="100%" height="100%"></iframe>
+}
+
 type EditorPageProps = {
-  defaultValue?: string
+  s3Url?: string,
 }
 
 const EditorPage: VFC = (props: EditorPageProps) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [pdfPane, setPdfPane] = useState(<div></div>)
-  const [stdout, setStdout] = useState("")
-  const [stderr, setStderr] = useState("")
+  const [pdfPane, setPdfPane] = useState(props.s3Url ? generatePdfIframe(props.s3Url) : <></>)
+  const { data: input } = useSWR<string>(props.s3Url ? `${props.s3Url}/input.saty` : null)
+  const { data: stdout } = useSWR<string>(props.s3Url ? `${props.s3Url}/stdout.txt` : null)
+  const { data: stderr } = useSWR<string>(props.s3Url ? `${props.s3Url}/stderr.txt` : null)
+  const router = useRouter()
 
   async function onRun() {
     if (editorRef.current !== null) {
@@ -33,20 +40,15 @@ const EditorPage: VFC = (props: EditorPageProps) => {
           },
           body: JSON.stringify(body),
         });
-        const { status, s3_url } = await response.json();
+        const { status, s3_url: s3Url }: { status: number, s3_url: string } = await response.json();
 
         if (status === 0) {
-          setPdfPane(<iframe src={`${s3_url}/document.pdf`} width="100%" height="100%"></iframe>);
+          setPdfPane(generatePdfIframe(s3Url));
         }
-        const [stdout, stderr] = await Promise.allSettled([
-          fetch(`${s3_url}/stdout.txt`).then(response => response.text()),
-          fetch(`${s3_url}/stderr.txt`).then(response => response.text()),
-        ]);
-        if (stdout.status === "fulfilled") {
-          setStdout(stdout.value);
-        }
-        if (stderr.status === "fulfilled") {
-          setStderr(stderr.value);
+
+        const buildId = s3Url.split("/").pop()
+        if (buildId !== undefined) {
+          router.push(`/share/${buildId}`)
         }
       } finally {
         setIsLoading(false);
@@ -72,13 +74,11 @@ const EditorPage: VFC = (props: EditorPageProps) => {
         <Editor
           width="50%"
           height="100%"
-          defaultLanguage=""
-          defaultValue="// some comment"
+          value={input ?? "Enter SATySFi program here"}
           theme="vs-dark"
           options={{
             fontSize: 16,
           }}
-          // declaring second argument makes Next unhappy. why?
           onMount={(editor) => { editorRef.current = editor }}
         />
         <Tabs variant="line" isFitted width="50%" height="100%" display="flex" flexDirection="column">
