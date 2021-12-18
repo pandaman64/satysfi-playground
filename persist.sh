@@ -5,8 +5,7 @@
 set -euo pipefail
 
 S3_URL=$(
-    base64 -w 0 "$2" | \
-    jq --raw-input '{"source":.}' | \
+    jq -n --rawfile src "$2" '{"source":$src}' | \
     curl \
         -d @- \
         -H 'Content-Type: application/json' \
@@ -14,5 +13,6 @@ S3_URL=$(
     jq --raw-output '.s3_url'
 )
 echo "document: ${S3_URL}/document.pdf"
+echo "document: ${S3_URL}/input.saty"
 echo "  stdout: ${S3_URL}/stdout.txt"
 echo "  stderr: ${S3_URL}/stderr.txt"
