@@ -33,7 +33,7 @@ const Home: NextPage = () => {
               body: JSON.stringify(body),
             });
             const responseObj = await response.json();
-            if (responseObj.status == 0) {
+            if (responseObj.status === 0) {
               setPane(<iframe src={`${responseObj.s3_url}/document.pdf`} width="100%" height="100%"></iframe>)
             }
           }
