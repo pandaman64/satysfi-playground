@@ -94,9 +94,9 @@ pkgs.nixosTest {
 
     with subtest("Healthcheck succeeds"):
       response = client.succeed(
-        "${pkgs.curl}/bin/curl http://server:8080/healthcheck"
+        "${pkgs.curl}/bin/curl -f http://server:8080/healthcheck"
       )
-      assert response == "Hello, World!"
+      assert response == "OK"
 
     for entry in os.scandir("${./examples}"):
       with open(os.path.join(entry.path, "input.saty"), "r") as f:

@@ -110,9 +110,10 @@ async fn main() -> io::Result<()> {
             .app_data(data.clone())
             .wrap(middleware::Compress::default())
             .wrap(cors)
+            .service(endpoint::healthcheck::get)
             .service(endpoint::compile::post)
             .service(endpoint::persist::post)
-            .default_service(web::route().to(|| HttpResponse::NotFound().body("Hello, World!")))
+            .default_service(web::route().to(HttpResponse::NotFound))
     };
 
     // systemd socket activationのときはHttpServer::listen(self, lst: TcpListener)を使えそう
