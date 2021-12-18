@@ -23,3 +23,9 @@ jobs:
           name: satysfi-playground
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
       - run: nix flake check
+      - name: Slack Notification
+        uses: rtCamp/action-slack-notify@v2.2.0
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_USERNAME: 'GitHub Actions'
+          SLACK_COLOR: ${{ job.status }}
