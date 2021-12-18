@@ -1,7 +1,7 @@
 use actix_web::{web, Responder};
 use serde::{Deserialize, Serialize};
 
-use crate::{podman, Data, from_utf8_lossy};
+use crate::{from_utf8_lossy, podman, Data};
 
 #[derive(Deserialize)]
 pub struct Request {

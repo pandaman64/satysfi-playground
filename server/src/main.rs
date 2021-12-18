@@ -58,10 +58,7 @@ fn podman(
     move || {
         let dir = tempfile::tempdir()?;
         let input_path = dir.path().join("input.saty");
-        fs::write(
-            input_path,
-            source,
-        )?;
+        fs::write(input_path, source)?;
 
         let output = Command::new(&data.podman)
             .arg("run")

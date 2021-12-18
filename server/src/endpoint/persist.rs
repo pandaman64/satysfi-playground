@@ -113,8 +113,7 @@ pub async fn post(
         hex::encode(build_id.as_slice())
     };
 
-    let (output, document) =
-        web::block(podman(request.source.clone(), data.clone())).await??;
+    let (output, document) = web::block(podman(request.source.clone(), data.clone())).await??;
 
     let s3_url = {
         put_objects(
