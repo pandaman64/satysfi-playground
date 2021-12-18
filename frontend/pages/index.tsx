@@ -7,8 +7,7 @@ import monaco from 'monaco-editor'
 
 const Home: NextPage = () => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
-  const [stdout, setStdout] = useState("")
-  const [stderr, setStderr] = useState("")
+  const [pane, setPane] = useState(<div></div>)
 
   return (
     <div className={styles.container}>
@@ -25,7 +24,7 @@ const Home: NextPage = () => {
             const body = {
               source: source,
             };
-            const response = await fetch("http://localhost:8080/compile", {
+            const response = await fetch("http://localhost:8080/persist", {
               method: "POST",
               mode: "cors",
               headers: {
@@ -34,8 +33,9 @@ const Home: NextPage = () => {
               body: JSON.stringify(body),
             });
             const responseObj = await response.json();
-            setStdout(responseObj.stdout);
-            setStderr(responseObj.stderr);
+            if (responseObj.status == 0) {
+              setPane(<iframe src={`${responseObj.s3_url}/document.pdf`} width="100%" height="100%"></iframe>)
+            }
           }
         }}>Run</button>
       </div>
@@ -53,10 +53,7 @@ const Home: NextPage = () => {
           // declaring second argument makes Next unhappy. why?
           onMount={(editor) => { editorRef.current = editor }}
         />
-        <div id="stdout">
-          {stdout}
-          {stderr}
-        </div>
+        {pane}
       </div>
     </div>
   )
