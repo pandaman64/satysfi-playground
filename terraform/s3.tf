@@ -1,4 +1,4 @@
-data "aws_iam_policy_document" "s3_bucket_policy" {
+data "aws_iam_policy_document" "share" {
   statement {
     actions = [
       "s3:GetObject"
@@ -15,9 +15,8 @@ data "aws_iam_policy_document" "s3_bucket_policy" {
   }
 }
 
-resource "aws_s3_bucket" "s3_bucket" {
-  bucket        = "satysfi-playground"
-  acl           = "private"
-  policy        = data.aws_iam_policy_document.s3_bucket_policy.json
-  force_destroy = true
+resource "aws_s3_bucket" "share" {
+  bucket = "satysfi-playground"
+  acl    = "private"
+  policy = data.aws_iam_policy_document.share.json
 }
