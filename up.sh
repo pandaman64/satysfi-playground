@@ -21,8 +21,8 @@ podman run --rm -p 9000:9000 -p 9001:9001 \
 # API
 nix run &
 
-# Frontend server
-(cd "$(dirname -- "${BASH_SOURCE[0]}")/frontend" || exit; npm run dev) &
+# Frontend server. next dev does not work well with monaco, so we need to restart again and again...
+(cd "$(dirname -- "${BASH_SOURCE[0]}")/frontend" || exit; npm run build && npm run start) &
 
 # Set up buckets
 while ! ncat -v localhost 9000 < /dev/null
@@ -38,6 +38,14 @@ do
 done
 mc -C "${CONFIG_DIR}" mb --region="${AWS_DEFAULT_REGION}" local/satysfi-playground
 mc -C "${CONFIG_DIR}" policy set download local/satysfi-playground
+
+# Set up initial content
+while ! ncat -v localhost 8080 < /dev/null
+do
+    echo 'Waiting for localhost:8080...'
+    sleep 1
+done
+./persist.sh http://localhost:8080 "$(dirname -- "${BASH_SOURCE[0]}")/examples/hello-playground/input.saty"
 
 echo 'Setup DONE'
 
