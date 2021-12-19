@@ -4,14 +4,14 @@
     "type": "string",
     "value": "54.95.124.241"
   },
-  "s3_api_domain_name": {
-    "sensitive": false,
-    "type": "string",
-    "value": "satysfi-playground.s3.ap-northeast-1.amazonaws.com"
-  },
   "s3_public_domain_name": {
     "sensitive": false,
     "type": "string",
     "value": "d2x2arp2uhutbk.cloudfront.net"
+  },
+  "s3_region": {
+    "sensitive": false,
+    "type": "string",
+    "value": "ap-northeast-1"
   }
 }

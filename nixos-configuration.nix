@@ -1,4 +1,7 @@
 { nixpkgs, system, nixosModule }:
+let
+  output = builtins.fromJSON (builtins.readFile ./terraform/output.json);
+in
 nixpkgs.lib.nixosSystem {
   inherit system;
 
@@ -15,8 +18,8 @@ nixpkgs.lib.nixosSystem {
         enable = true;
         logLevel = "DEBUG";
         s3ApiEndpoint = "https://s3.${region}.amazonaws.com";
-        s3PublicEndpoint = "https://satysfi-playground.s3.amazonaws.com";
-        region = "ap-northeast-1";
+        s3PublicEndpoint = "https://${output.s3_public_domain_name.value}";
+        region = output.s3_region.value;
       };
     })
   ];

@@ -3,20 +3,17 @@
 
 set -euo pipefail
 
-# Check if the test passes.
-nix flake check
+BASEDIR=$(dirname -- "${BASH_SOURCE[0]}")
 
 # Run terraform and retrieve public ip of EC2 instance.
-(
-    cd terraform
-    terraform apply
-)
-PUBLIC_IP=$(
-    cd terraform
-    terraform output -raw public_ip
-)
+terraform -chdir="${BASEDIR}/terraform" apply
+terraform -chdir="${BASEDIR}/terraform" output -json > "${BASEDIR}/terraform/output.json"
+
+# Check if the test passes after touching terraform/output.json.
+nix flake check
 
 # Update the machine with the latest NixOS configuration.
+PUBLIC_IP=$(jq --raw-output '.public_ip.value' "${BASEDIR}/terraform/output.json")
 nixos-rebuild switch --target-host "root@${PUBLIC_IP}" --flake '.#satysfi-playground'
 
 # Done.
