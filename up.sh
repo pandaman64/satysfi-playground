@@ -10,6 +10,7 @@ export AWS_SECRET_ACCESS_KEY=minioadmin
 export AWS_DEFAULT_REGION='ap-northeast-1'
 export MINIO_ROOT_USER="${AWS_ACCESS_KEY_ID}"
 export MINIO_ROOT_PASSWORD="${AWS_SECRET_ACCESS_KEY}"
+export API_ENDPOINT="http://localhost:8080"
 export S3_API_ENDPOINT='http://localhost:9000'
 export S3_PUBLIC_ENDPOINT='http://localhost:9000/satysfi-playground'
 export RUST_LOG='DEBUG'
@@ -45,7 +46,7 @@ do
     echo 'Waiting for localhost:8080...'
     sleep 1
 done
-./persist.sh http://localhost:8080 "$(dirname -- "${BASH_SOURCE[0]}")/examples/hello-playground/input.saty"
+./persist.sh "${API_ENDPOINT}" "$(dirname -- "${BASH_SOURCE[0]}")/examples/hello-playground/input.saty"
 
 echo 'Setup DONE'
 

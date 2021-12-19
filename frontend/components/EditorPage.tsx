@@ -16,9 +16,10 @@ type EditorPageProps = {
   stderr: string | null,
   existsPdf: boolean,
   pdfUrl: string | null,
+  apiUrl: string,
 }
 
-const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, existsPdf, pdfUrl }: EditorPageProps) => {
+const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, existsPdf, pdfUrl, apiUrl }: EditorPageProps) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -31,7 +32,7 @@ const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, existsPdf, pd
         const body = {
           source: source,
         };
-        const response = await fetch("http://localhost:8080/persist", {
+        const response = await fetch(`${apiUrl}/persist`, {
           method: "POST",
           mode: "cors",
           headers: {

@@ -7,6 +7,7 @@ type Props = {
   stderr: string | null,
   existsPdf: boolean,
   pdfUrl: string,
+  apiUrl: string,
 }
 
 function textIfOk(response: Response): Promise<string | null> {
@@ -37,8 +38,9 @@ export const getStaticProps: GetStaticProps<Props> = async (context) => {
   }
 
   const s3BaseUrl = process.env.S3_PUBLIC_ENDPOINT
-  if (s3BaseUrl === undefined) {
-    console.error('S3_PUBLIC_ENDPOINT is not set')
+  const apiUrl = process.env.API_ENDPOINT
+  if (s3BaseUrl === undefined || apiUrl === undefined) {
+    console.error(`Environment variables are not set: S3_PUBLIC_ENDPOINT=${s3BaseUrl}, API_ENDPOINT=${apiUrl}`)
     return {
       notFound: true,
     }
@@ -64,7 +66,8 @@ export const getStaticProps: GetStaticProps<Props> = async (context) => {
       stdout,
       stderr,
       existsPdf: headPdf !== null,
-      pdfUrl: `${s3BaseUrl}/${buildId}/document.pdf`
+      pdfUrl: `${s3BaseUrl}/${buildId}/document.pdf`,
+      apiUrl,
     }
   }
 }
