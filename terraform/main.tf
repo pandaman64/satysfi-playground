@@ -18,6 +18,10 @@ output "public_ip" {
   value = aws_instance.machine.public_ip
 }
 
-output "s3_url" {
+output "s3_api_domain_name" {
+  value = aws_s3_bucket.share.bucket_regional_domain_name
+}
+
+output "s3_public_domain_name" {
   value = aws_cloudfront_distribution.share.domain_name
 }
