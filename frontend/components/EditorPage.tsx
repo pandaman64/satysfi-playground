@@ -14,10 +14,11 @@ type EditorPageProps = {
   input: string,
   stdout: string | null,
   stderr: string | null,
+  existsPdf: boolean,
   pdfUrl: string | null,
 }
 
-const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, pdfUrl }: EditorPageProps) => {
+const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, existsPdf, pdfUrl }: EditorPageProps) => {
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
@@ -75,7 +76,7 @@ const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, pdfUrl }: Edi
           }}
           onMount={(editor) => { editorRef.current = editor }}
         />
-        <Tabs variant="line" isFitted width="50%" height="100%" display="flex" flexDirection="column">
+        <Tabs variant="line" isFitted width="50%" height="100%" display="flex" flexDirection="column" defaultIndex={existsPdf ? 0 : 1}>
           <TabList>
             <Tab>PDF</Tab>
             <Tab>stdout</Tab>

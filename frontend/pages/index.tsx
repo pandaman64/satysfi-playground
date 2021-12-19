@@ -6,6 +6,7 @@ const Home: NextPage = () => {
     input: "",
     stdout: null,
     stderr: null,
+    existsPdf: false,
     pdfUrl: null,
   })
 }

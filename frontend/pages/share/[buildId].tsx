@@ -5,6 +5,7 @@ type Props = {
   input: string,
   stdout: string | null,
   stderr: string | null,
+  existsPdf: boolean,
   pdfUrl: string,
 }
 
@@ -43,7 +44,10 @@ export const getStaticProps: GetStaticProps<Props> = async (context) => {
     }
   }
 
-  const [input, stdout, stderr] = await Promise.allSettled([
+  const [headPdf, input, stdout, stderr] = await Promise.allSettled([
+    fetch(`${s3BaseUrl}/${buildId}/document.pdf`, {
+      method: "HEAD",
+    }).then(textIfOk),
     fetch(`${s3BaseUrl}/${buildId}/input.saty`).then(textIfOk),
     fetch(`${s3BaseUrl}/${buildId}/stdout.txt`).then(textIfOk),
     fetch(`${s3BaseUrl}/${buildId}/stderr.txt`).then(textIfOk),
@@ -59,6 +63,7 @@ export const getStaticProps: GetStaticProps<Props> = async (context) => {
       input,
       stdout,
       stderr,
+      existsPdf: headPdf !== null,
       pdfUrl: `${s3BaseUrl}/${buildId}/document.pdf`
     }
   }
