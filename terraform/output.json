@@ -1,0 +1,12 @@
+{
+  "public_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "54.95.124.241"
+  },
+  "s3_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "d2x2arp2uhutbk.cloudfront.net"
+  }
+}

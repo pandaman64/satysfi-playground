@@ -1,16 +1,16 @@
-data "aws_iam_policy_document" "share" {
+data "aws_iam_policy_document" "share_allow_only_cloudfront" {
   statement {
     actions = [
       "s3:GetObject"
     ]
     effect = "Allow"
     resources = [
-      "arn:aws:s3:::satysfi-playground",
-      "arn:aws:s3:::satysfi-playground/*"
+      "${aws_s3_bucket.share.arn}",
+      "${aws_s3_bucket.share.arn}/*"
     ]
     principals {
-      identifiers = ["*"]
-      type        = "*"
+      type        = "AWS"
+      identifiers = [aws_cloudfront_origin_access_identity.share.iam_arn]
     }
   }
 }
@@ -18,5 +18,9 @@ data "aws_iam_policy_document" "share" {
 resource "aws_s3_bucket" "share" {
   bucket = "satysfi-playground"
   acl    = "private"
-  policy = data.aws_iam_policy_document.share.json
+}
+
+resource "aws_s3_bucket_policy" "share" {
+  bucket = aws_s3_bucket.share.id
+  policy = data.aws_iam_policy_document.share_allow_only_cloudfront.json
 }

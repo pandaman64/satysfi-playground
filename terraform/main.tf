@@ -19,5 +19,5 @@ output "public_ip" {
 }
 
 output "s3_url" {
-  value = aws_s3_bucket.share.bucket_domain_name
+  value = aws_cloudfront_distribution.share.domain_name
 }
