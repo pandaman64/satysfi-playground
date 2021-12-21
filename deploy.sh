@@ -20,12 +20,15 @@ nixos-rebuild switch --target-host "root@${PUBLIC_IP}" --flake '.#satysfi-playgr
 API_ENDPOINT_DOMAIN=$(jq --raw-output '.api_domain_name.value' "${BASEDIR}/terraform/output.json")
 S3_PUBLIC_ENDPOINT_DOMAIN=$(jq --raw-output '.s3_public_domain_name.value' "${BASEDIR}/terraform/output.json")
 
-# It's ok to fail removing environment variables
-echo y | vercel env rm API_ENDPOINT production || true
-echo y | vercel env rm S3_PUBLIC_ENDPOINT production || true
+for environment in production preview development
+do
+    # It's ok to fail removing environment variables
+    echo y | vercel env rm API_ENDPOINT "${environment}" || true
+    echo y | vercel env rm S3_PUBLIC_ENDPOINT "${environment}" || true
 
-echo "https://${API_ENDPOINT_DOMAIN}" | vercel env add API_ENDPOINT production
-echo "https://${S3_PUBLIC_ENDPOINT_DOMAIN}" | vercel env add S3_PUBLIC_ENDPOINT production
+    echo "https://${API_ENDPOINT_DOMAIN}" | vercel env add API_ENDPOINT "${environment}"
+    echo "https://${S3_PUBLIC_ENDPOINT_DOMAIN}" | vercel env add S3_PUBLIC_ENDPOINT "${environment}"
+done
 
 # Done.
 echo "${PUBLIC_IP}"
