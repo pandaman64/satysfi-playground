@@ -1,4 +1,6 @@
 resource "aws_security_group" "ssh_and_egress" {
+  vpc_id = aws_vpc.main.id
+
   ingress {
     from_port   = 22
     to_port     = 22
@@ -76,14 +78,23 @@ resource "aws_iam_role_policy_attachment" "ec2_allow_s3_access_attach" {
   policy_arn = aws_iam_policy.ec2_allow_s3_access_policy.arn
 }
 
+resource "aws_eip" "machine" {
+  instance = aws_instance.machine.id
+  vpc      = true
+
+  depends_on = [aws_internet_gateway.public]
+}
+
 resource "aws_instance" "machine" {
   # https://github.com/NixOS/nixpkgs/blob/c52ea537b37afe1e2a4fcd33f4a8a5259a2da0ce/nixos/modules/virtualisation/amazon-ec2-amis.nix#L418
   # "21.11".ap-northeast-1.x86_64-linux.hvm-ebs = "ami-07c95eda953bf5435";
-  ami                  = "ami-07c95eda953bf5435"
-  instance_type        = "t1.micro"
-  security_groups      = [aws_security_group.ssh_and_egress.name]
-  key_name             = aws_key_pair.generated_key.key_name
-  iam_instance_profile = aws_iam_instance_profile.machine_profile.name
+  ami                    = "ami-07c95eda953bf5435"
+  instance_type          = "t1.micro"
+  vpc_security_group_ids = [aws_security_group.ssh_and_egress.id]
+  key_name               = aws_key_pair.generated_key.key_name
+  iam_instance_profile   = aws_iam_instance_profile.machine_profile.name
+  subnet_id              = aws_subnet.public[local.machine_availability_zone].id
+  availability_zone      = local.machine_availability_zone
 
   root_block_device {
     volume_size = 10 # GiB

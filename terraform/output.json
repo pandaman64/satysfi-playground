@@ -2,12 +2,25 @@
   "public_ip": {
     "sensitive": false,
     "type": "string",
-    "value": "54.95.124.241"
+    "value": "52.196.154.131"
+  },
+  "route53_name_servers": {
+    "sensitive": false,
+    "type": [
+      "list",
+      "string"
+    ],
+    "value": [
+      "ns-1444.awsdns-52.org",
+      "ns-1625.awsdns-11.co.uk",
+      "ns-345.awsdns-43.com",
+      "ns-899.awsdns-48.net"
+    ]
   },
   "s3_public_domain_name": {
     "sensitive": false,
     "type": "string",
-    "value": "d2x2arp2uhutbk.cloudfront.net"
+    "value": "d1j4gebhib3s01.cloudfront.net"
   },
   "s3_region": {
     "sensitive": false,
