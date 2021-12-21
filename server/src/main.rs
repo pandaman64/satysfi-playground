@@ -100,11 +100,7 @@ async fn main() -> io::Result<()> {
     let data = web::Data::new(populate_data().await);
 
     let factory = move || {
-        let cors = Cors::default()
-            .allow_any_origin()
-            .allowed_methods([Method::GET, Method::POST, Method::OPTIONS])
-            .allowed_headers([header::CONTENT_TYPE])
-            .max_age(600);
+        let cors = Cors::permissive();
 
         App::new()
             .app_data(data.clone())
@@ -118,7 +114,7 @@ async fn main() -> io::Result<()> {
 
     // systemd socket activationのときはHttpServer::listen(self, lst: TcpListener)を使えそう
     HttpServer::new(factory)
-        .server_hostname("satysfi-playground.tech")
+        .server_hostname("api.satysfi-playground.tech")
         .bind("0.0.0.0:8080")?
         .run()
         .await
