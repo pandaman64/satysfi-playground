@@ -115,6 +115,7 @@
           pkgs.terraform
           pkgs.nixos-option
           pkgs.shellcheck
+          pkgs.nodePackages.vercel
         ];
       };
     };

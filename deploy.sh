@@ -16,5 +16,16 @@ nix flake check
 PUBLIC_IP=$(jq --raw-output '.public_ip.value' "${BASEDIR}/terraform/output.json")
 nixos-rebuild switch --target-host "root@${PUBLIC_IP}" --flake '.#satysfi-playground'
 
+# Update Vercel environment variables
+API_ENDPOINT_DOMAIN=$(jq --raw-output '.api_domain_name.value' "${BASEDIR}/terraform/output.json")
+S3_PUBLIC_ENDPOINT_DOMAIN=$(jq --raw-output '.s3_public_domain_name.value' "${BASEDIR}/terraform/output.json")
+
+# It's ok to fail removing environment variables
+echo y | vercel env rm API_ENDPOINT production || true
+echo y | vercel env rm S3_PUBLIC_ENDPOINT production || true
+
+echo "https://${API_ENDPOINT_DOMAIN}" | vercel env add API_ENDPOINT production
+echo "https://${S3_PUBLIC_ENDPOINT_DOMAIN}" | vercel env add S3_PUBLIC_ENDPOINT production
+
 # Done.
 echo "${PUBLIC_IP}"

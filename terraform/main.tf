@@ -46,3 +46,7 @@ output "s3_public_domain_name" {
 output "route53_name_servers" {
   value = aws_route53_zone.satysfi-playground_tech.name_servers
 }
+
+output "api_domain_name" {
+  value = aws_route53_record.satysfi-playground_tech.fqdn
+}

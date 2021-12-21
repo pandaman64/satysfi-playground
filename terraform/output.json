@@ -1,4 +1,9 @@
 {
+  "api_domain_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "api.satysfi-playground.tech"
+  },
   "public_ip": {
     "sensitive": false,
     "type": "string",
