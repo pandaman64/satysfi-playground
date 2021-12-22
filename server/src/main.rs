@@ -100,7 +100,11 @@ async fn main() -> io::Result<()> {
     let data = web::Data::new(populate_data().await);
 
     let factory = move || {
-        let cors = Cors::permissive();
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allowed_methods([Method::GET, Method::POST, Method::OPTIONS])
+            .allowed_headers([header::CONTENT_TYPE])
+            .max_age(600);
 
         App::new()
             .app_data(data.clone())
