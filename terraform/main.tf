@@ -17,6 +17,9 @@ provider "aws" {
 locals {
   domain_name            = "satysfi-playground.tech"
   api_server_domain_name = "api.${local.domain_name}"
+  # Check these config on Vercel
+  frontend_ip        = "76.76.21.21"
+  frontend_www_cname = "cname.vercel-dns.com"
   public_subnets = toset([
     {
       availability_zone = "ap-northeast-1a"
