@@ -2,7 +2,7 @@ import type { GetStaticPaths, GetStaticProps, NextPage } from 'next'
 import EditorPage from '../../components/EditorPage'
 
 type Props = {
-  input: string,
+  input: string | null,
   stdout: string | null,
   stderr: string | null,
   existsPdf: boolean,
@@ -28,7 +28,7 @@ function extractResult<T>(result: PromiseSettledResult<T>): T | null {
 
 export const getStaticProps: GetStaticProps<Props> = async (context) => {
   const buildId = context.params?.buildId
-  console.log(buildId)
+  console.log(`frontend: buildId = ${buildId}`)
 
   // aid for type inference
   if (typeof buildId !== "string") {
@@ -54,11 +54,6 @@ export const getStaticProps: GetStaticProps<Props> = async (context) => {
     fetch(`${s3BaseUrl}/${buildId}/stdout.txt`).then(textIfOk),
     fetch(`${s3BaseUrl}/${buildId}/stderr.txt`).then(textIfOk),
   ]).then(args => args.map(extractResult))
-  if (input === null) {
-    return {
-      notFound: true,
-    }
-  }
 
   return {
     props: {

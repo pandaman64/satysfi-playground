@@ -11,7 +11,7 @@ function generatePdfIframe(pdfUrl: string): JSX.Element {
 }
 
 type EditorPageProps = {
-  input: string,
+  input: string | null,
   stdout: string | null,
   stderr: string | null,
   existsPdf: boolean,
@@ -70,7 +70,7 @@ const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, existsPdf, pd
         <Editor
           width="50%"
           height="100%"
-          value={input}
+          value={input ?? ""}
           theme="vs-dark"
           options={{
             fontSize: 16,
