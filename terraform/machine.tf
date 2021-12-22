@@ -89,7 +89,7 @@ resource "aws_instance" "machine" {
   # https://github.com/NixOS/nixpkgs/blob/c52ea537b37afe1e2a4fcd33f4a8a5259a2da0ce/nixos/modules/virtualisation/amazon-ec2-amis.nix#L418
   # "21.11".ap-northeast-1.x86_64-linux.hvm-ebs = "ami-07c95eda953bf5435";
   ami                    = "ami-07c95eda953bf5435"
-  instance_type          = "t1.micro"
+  instance_type          = "t3.micro"
   vpc_security_group_ids = [aws_security_group.ssh_and_egress.id]
   key_name               = aws_key_pair.generated_key.key_name
   iam_instance_profile   = aws_iam_instance_profile.machine_profile.name
