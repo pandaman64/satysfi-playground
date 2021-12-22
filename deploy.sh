@@ -13,12 +13,12 @@ terraform -chdir="${BASEDIR}/terraform" output -json > "${BASEDIR}/terraform/out
 nix flake check
 
 # Update the machine with the latest NixOS configuration.
-PUBLIC_IP=$(jq --raw-output '.public_ip.value' "${BASEDIR}/terraform/output.json")
+PUBLIC_IP=$(jq --raw-output --join-output '.public_ip.value' "${BASEDIR}/terraform/output.json")
 nixos-rebuild switch --target-host "root@${PUBLIC_IP}" --flake '.#satysfi-playground'
 
 # Update Vercel environment variables
-API_ENDPOINT_DOMAIN=$(jq --raw-output '.api_domain_name.value' "${BASEDIR}/terraform/output.json")
-S3_PUBLIC_ENDPOINT_DOMAIN=$(jq --raw-output '.s3_public_domain_name.value' "${BASEDIR}/terraform/output.json")
+API_ENDPOINT_DOMAIN=$(jq --raw-output --join-output '.api_domain_name.value' "${BASEDIR}/terraform/output.json")
+S3_PUBLIC_ENDPOINT_DOMAIN=$(jq --raw-output --join-output '.s3_public_domain_name.value' "${BASEDIR}/terraform/output.json")
 
 for environment in production preview development
 do
@@ -26,8 +26,8 @@ do
     echo y | vercel env rm API_ENDPOINT "${environment}" || true
     echo y | vercel env rm S3_PUBLIC_ENDPOINT "${environment}" || true
 
-    echo "https://${API_ENDPOINT_DOMAIN}" | vercel env add API_ENDPOINT "${environment}"
-    echo "https://${S3_PUBLIC_ENDPOINT_DOMAIN}" | vercel env add S3_PUBLIC_ENDPOINT "${environment}"
+    echo -n "https://${API_ENDPOINT_DOMAIN}" | vercel env add API_ENDPOINT "${environment}"
+    echo -n "https://${S3_PUBLIC_ENDPOINT_DOMAIN}" | vercel env add S3_PUBLIC_ENDPOINT "${environment}"
 done
 
 # Done.
