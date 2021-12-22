@@ -77,12 +77,27 @@ in
           # Podman writes to $HOME/.local/share/containers/storage
           createHome = true;
           home = "/home/${user}";
+          # TODO: I could not make newuidmap work with systemd services. some logs will be shown in stderr...
+          # subUidRanges = [
+          #   {
+          #     startUid = 100000;
+          #     count = 65536;
+          #   }
+          # ];
+          # subGidRanges = [
+          #   {
+          #     startGid = 1000000;
+          #     count = 65536;
+          #   }
+          # ];
         };
       };
 
       # Oneshot unit for loading SATySFi Docker image into Podman
       systemd.services.load-satysfi-docker = {
         description = "SATySFi Playground Docker Image Loader";
+        # for newuidmap/newgidmap used by podman
+        # path = [ pkgs.shadow ];
 
         serviceConfig = {
           Type = "oneshot";
@@ -96,6 +111,8 @@ in
         wantedBy = [ "multi-user.target" ];
         after = [ "network.target" "load-satysfi-docker.service" ];
         requires = [ "load-satysfi-docker.service" ];
+        # for newuidmap/newgidmap used by podman
+        # path = [ pkgs.shadow ];
 
         serviceConfig = {
           Type = "simple";
