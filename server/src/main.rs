@@ -70,6 +70,12 @@ fn podman(
                 buffer.push(":/tmp");
                 buffer
             })
+            // sandboxing
+            .arg("--memory=10m")
+            .arg("--network=none")
+            .arg("--timeout=10")
+            // image
+            .arg("--pull=never")
             .arg("satysfi:latest")
             .stdin(Stdio::null())
             .output()?;
