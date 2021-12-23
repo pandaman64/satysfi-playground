@@ -44,7 +44,8 @@ do
     sleep 1
 done
 PERSIST_RESULT=$(./persist.sh "${API_ENDPOINT}" "$(dirname -- "${BASH_SOURCE[0]}")/examples/hello-playground/input.saty")
-export INDEX_PAGE_BUILD_ID=$(echo "${PERSIST_RESULT}" | grep -Eo '[a-z0-9]{64}' | tail -n 1)
+INDEX_PAGE_BUILD_ID=$(echo "${PERSIST_RESULT}" | grep -Eo '[a-z0-9]{64}' | tail -n 1)
+export INDEX_PAGE_BUILD_ID
 echo "up.sh: INDEX_PAGE_BUILD_ID=${INDEX_PAGE_BUILD_ID}"
 
 # Frontend server. next dev does not work well with monaco, so we need to restart again and again...

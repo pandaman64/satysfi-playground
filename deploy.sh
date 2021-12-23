@@ -29,6 +29,7 @@ do
     # It's ok to fail removing environment variables
     echo y | vercel env rm API_ENDPOINT "${environment}" || true
     echo y | vercel env rm S3_PUBLIC_ENDPOINT "${environment}" || true
+    echo y | vercel env rm INDEX_PAGE_BUILD_ID "${environment}" || true
 
     echo -n "https://${API_ENDPOINT_DOMAIN}" | vercel env add API_ENDPOINT "${environment}"
     echo -n "https://${S3_PUBLIC_ENDPOINT_DOMAIN}" | vercel env add S3_PUBLIC_ENDPOINT "${environment}"
