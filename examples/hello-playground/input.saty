@@ -1,10 +1,127 @@
 @require: stdjabook
+@require: itemize
 
 document (|
   title = {\SATySFi; Playground};
-  author = {Your Name};
+  author = {井山梃子歴史館};
   show-title = true;
   show-toc = false;
 |) '<
-    +p { Hello, \SATySFi; Playground! }
+  +p {
+    Hello, \SATySFi; Playground! (English follows Japanese)
+  }
+  +p {
+    \SATySFi; Playgroundは\href(`https://github.com/gfngfn/SATySFi`){組版処理システム\SATySFi;}をWebから実行できるサービスです。
+    実行結果のPDF文書やコマンド出力は保存され、ユニークなURL\footnote{URLは\SATySFi;のバージョンとソースコードのハッシュを用いて計算されています。}を利用してアクセスできます。
+    \SATySFi; Playgroundを利用することで、
+    \listing {
+      * \SATySFi;をインストールせずに試してみること
+      ** 例えば、\SATySFi; Playgroundで卒論を書くとか。
+      * \SATySFi;文書を簡単に共有すること
+      ** 例えば、バグレポートを送る際に\href(`https://ja.stackoverflow.com/help/minimal-reproducible-example`){再現可能な短いサンプルコードの実行結果}へのPlayground URLを添付すると便利でしょう。
+    }%
+    といったことが可能となります。
+    もちろん、これ以外の創造的な使い方もたくさんあることでしょう。何か思いついたことがあったらぜひページ下部の連絡先からご連絡ください。
+  }
+
+  +section { 使い方 } <
+    +p {
+      エディタに\SATySFi;ソースコードを記述してRunボタンをクリックすると文書のコンパイル（生成）が実行されます。
+      コンパイルが終了すると自動的に結果が表示されます。この際、アドレスが共有用のURLへと遷移するので、コピー&ペーストで簡単に共有できます。
+    }
+  >
+
+  +section { 今後の発展 } <
+    +p {
+      次の機能追加をやりたいと考えています。このリストが空になるのはいつになることやら。
+    }
+    +listing {
+      * シンタックスハイライト・補完
+      ** \href(`https://microsoft.github.io/monaco-editor/monarch.html`){Monarch}を使うことになりそうです
+      * \href(`https://github.com/na4zagin3/satyrographos`){Satyrographos}パッケージ
+      ** セキュリティの懸念から\SATySFi;の実行環境に依存関係を追加したくないので、パッケージを事前展開したDockerイメージを構築することになりそうです
+      * コマンドライン引数
+      * 複数ファイル対応
+      ** パストラバーサル脆弱性を仕込まずに実装できる気がしない
+      * 絵文字
+      ** フォントが無さそう
+      * キーボードショートカット
+      ** Ctrl + Enterでコンパイルできると嬉しい
+      * 異なる画面レイアウト
+      ** 例えば、PDFとstdoutを同時に表示できると便利そうです
+      ** また、モバイル対応にも役立つでしょう
+      * Observabilityの改善
+    }
+  >
+
+  +section { 連絡先 } <
+    +p {
+      バグ報告・要望・使ってみた感想等ありましたらぜひ次の連絡先にご連絡ください。
+    }
+    +listing {
+      * Twitter: \@__pandaman64__
+      * \SATySFi; Slack: \@pandaman
+      * GitHub: \href(`https://github.com/pandaman64/satysfi-playground`){https://github.com/pandaman64/satysfi-playground}
+    }
+  >
+
+  +section { English Version } <
+    +p {
+      Hello, \SATySFi; Playground!
+    }
+    +p {
+      \SATySFi; Playground is a Web service for running \href(`https://github.com/gfngfn/SATySFi`){\SATySFi;, a typesetting system}.
+      The result of the runs, including the PDF document and the command output, is preserved and assigned to a unique and sharable URL.
+      \SATySFi; Playground enables you:
+      \listing {
+        * to play with \SATySFi; without installing\; and
+        ** For example, writing a thesis with \SATySFi; Playground.
+        * to share \SATySFi; documents easily.
+        ** For example, it would be convenient to post a Playground URL to \href(`https://stackoverflow.com/help/minimal-reproducible-example`){Minimal, Reproducible Example} when submitting a bug report.
+      }%
+      Undoubtedly there will be more creative usages other than these. If you come up with one, please let me know via the contact information below!
+    }
+  >
+
+  +section { How to Use } <
+    +p {
+      You can write \SATySFi; code inside the editor, and clicking Run will compile the document.
+      After the completion of the compile, the result will be automatically displayed.
+      At the same time, the address transitions to the sharable URL, so you can copy and paste it to share the document.
+    }
+  >
+
+  +section { Future Work } <
+    +p {
+      I'd like to add the following features to Playground. I don't know when the list become empty, though.
+    }
+    +listing {
+      * Syntax Highlighting, Completion
+      ** \href(`https://microsoft.github.io/monaco-editor/monarch.html`){Monarch} will be used
+      * \href(`https://github.com/na4zagin3/satyrographos`){Satyrographos} packages
+      ** Due to security concern, I'm going to build a Docker image with pre-expanded packages so that no additional dependencies will be added to the \SATySFi; execution environment.
+      * Command-line arguments
+      * Support for multiple files
+      ** I'm sure I'll embed a path-traversal vulnerability
+      * Emojis
+      ** Missing fonts maybe?
+      * Keyboard shortcuts
+      ** It would be nice if Ctrl + Enter triggers a compilation
+      * Different layouts
+      ** For example, it would be useful to view PDF and stdout simultaneously
+      ** It would be also nice for mobile users
+      * Improvement to observability
+    }
+  >
+
+  +section { Contacts } <
+    +p {
+      If you have any bug reports, requests, and experience reports, please feel free to contact me:
+    }
+    +listing {
+      * Twitter: \@__pandaman64__
+      * \SATySFi; Slack: \@pandaman
+      * GitHub: \href(`https://github.com/pandaman64/satysfi-playground`){https://github.com/pandaman64/satysfi-playground}
+    }
+  >
 >
