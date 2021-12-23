@@ -71,7 +71,7 @@ fn podman(
                 buffer
             })
             // sandboxing
-            .arg("--memory=10m")
+            .arg("--memory=200m")
             .arg("--network=none")
             .arg("--timeout=10")
             // image
