@@ -1,35 +1,36 @@
 import type { GetStaticPaths, GetStaticProps, NextPage } from 'next'
 import EditorPage from '../components/EditorPage'
+import getEditorPageProps, { EditorPageProps } from '../lib/getEditorPageProps'
 
-type Props = {
-  apiUrl: string,
+const Home: NextPage<EditorPageProps> = (props) => {
+  return EditorPage(props)
 }
 
-const Home: NextPage<Props> = ({ apiUrl }: Props) => {
-  return EditorPage({
-    input: "",
-    stdout: null,
-    stderr: null,
-    existsPdf: false,
-    pdfUrl: null,
-    apiUrl,
-  })
-}
+export const getStaticProps: GetStaticProps<EditorPageProps> = async (context) => {
+  const indexPageBuildId = process.env.INDEX_PAGE_BUILD_ID
+  console.log(`INDEX_PAGE_BUILD_ID=${indexPageBuildId}`)
+  if (indexPageBuildId === undefined) {
+    const apiUrl = process.env.API_ENDPOINT
+    if (apiUrl === undefined) {
+      console.error(`Environment variable is not set: API_ENDPOINT=${apiUrl}`)
+      return {
+        notFound: true,
+      }
+    }
 
-export const getStaticProps: GetStaticProps<Props> = async (context) => {
-  const apiUrl = process.env.API_ENDPOINT
-  if (apiUrl === undefined) {
-    console.error(`Environment variable is not set: API_ENDPOINT=${apiUrl}`)
     return {
-      notFound: true,
+      props: {
+        input: "",
+        stdout: null,
+        stderr: null,
+        existsPdf: false,
+        pdfUrl: null,
+        apiUrl,
+      }
     }
   }
 
-  return {
-    props: {
-      apiUrl,
-    }
-  }
+  return await getEditorPageProps(indexPageBuildId)
 }
 
 export default Home

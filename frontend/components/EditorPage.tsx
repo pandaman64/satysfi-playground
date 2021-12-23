@@ -5,18 +5,10 @@ import { Button, Tab, TabList, TabPanel, TabPanels, Tabs, Textarea } from '@chak
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import styles from '../styles/Home.module.css'
+import { EditorPageProps } from '../lib/getEditorPageProps'
 
 function generatePdfIframe(pdfUrl: string): JSX.Element {
   return <iframe src={pdfUrl} width="100%" height="100%"></iframe>
-}
-
-type EditorPageProps = {
-  input: string | null,
-  stdout: string | null,
-  stderr: string | null,
-  existsPdf: boolean,
-  pdfUrl: string | null,
-  apiUrl: string,
 }
 
 const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, existsPdf, pdfUrl, apiUrl }: EditorPageProps) => {

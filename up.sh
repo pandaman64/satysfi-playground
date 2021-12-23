@@ -22,9 +22,6 @@ podman run --rm -p 9000:9000 -p 9001:9001 \
 # API
 nix run &
 
-# Frontend server. next dev does not work well with monaco, so we need to restart again and again...
-(cd "$(dirname -- "${BASH_SOURCE[0]}")/frontend" || exit; npm run build && npm run start) &
-
 # Set up buckets
 while ! ncat -v localhost 9000 < /dev/null
 do
@@ -46,7 +43,12 @@ do
     echo 'Waiting for localhost:8080...'
     sleep 1
 done
-./persist.sh "${API_ENDPOINT}" "$(dirname -- "${BASH_SOURCE[0]}")/examples/hello-playground/input.saty"
+PERSIST_RESULT=$(./persist.sh "${API_ENDPOINT}" "$(dirname -- "${BASH_SOURCE[0]}")/examples/hello-playground/input.saty")
+export INDEX_PAGE_BUILD_ID=$(echo "${PERSIST_RESULT}" | grep -Eo '[a-z0-9]{64}' | tail -n 1)
+echo "up.sh: INDEX_PAGE_BUILD_ID=${INDEX_PAGE_BUILD_ID}"
+
+# Frontend server. next dev does not work well with monaco, so we need to restart again and again...
+(cd "$(dirname -- "${BASH_SOURCE[0]}")/frontend" || exit; npm run build && npm run start) &
 
 echo 'Setup DONE'
 
