@@ -78,10 +78,10 @@ const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, existsPdf, pd
           <TabPanels flex={1}>
             <TabPanel padding={0} height="100%">{pdfUrl ? generatePdfIframe(pdfUrl) : <></>}</TabPanel>
             <TabPanel padding={0} height="100%">
-              <Textarea isReadOnly resize="none" width="100%" height="100%" value={stdout ?? ""}></Textarea>
+              <Textarea resize="none" width="100%" height="100%" value={stdout ?? ""}></Textarea>
             </TabPanel>
             <TabPanel padding={0} height="100%">
-              <Textarea isReadOnly resize="none" width="100%" height="100%" value={stderr ?? ""}></Textarea>
+              <Textarea resize="none" width="100%" height="100%" value={stderr ?? ""}></Textarea>
             </TabPanel>
           </TabPanels>
         </Tabs>
