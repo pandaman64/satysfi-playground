@@ -51,6 +51,11 @@ echo "up.sh: INDEX_PAGE_BUILD_ID=${INDEX_PAGE_BUILD_ID}"
 # Frontend server. next dev does not work well with monaco, so we need to restart again and again...
 (cd "$(dirname -- "${BASH_SOURCE[0]}")/frontend" || exit; npm run build && npm run start) &
 
+# Load Docker image
+export DOCKER_IMAGE_PATH
+DOCKER_IMAGE_PATH=$(nix build '.#satysfi-docker' --no-link --json | jq --raw-output '.[0].outputs.out')
+podman load < "${DOCKER_IMAGE_PATH}"
+
 echo 'Setup DONE'
 
 wait

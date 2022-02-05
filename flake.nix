@@ -31,7 +31,9 @@
       packages.${system} = {
         # server-crate2nix = server.rootCrate.build;
         server = naersk-lib.buildPackage ./server;
-        satysfi-docker = pkgs.callPackage ./satysfi-docker.nix { };
+        satysfi-docker = import ./satysfi-docker.nix {
+          inherit pkgs;
+        };
       };
 
       nixosModules.satysfi-playground = import ./service.nix (system: {

@@ -51,6 +51,7 @@ document (|
       ** 例えば、PDFとstdoutを同時に表示できると便利そうです
       ** また、モバイル対応にも役立つでしょう
       * Observabilityの改善
+      * stdout/stderrが選択できない
     }
   >
 
@@ -111,6 +112,7 @@ document (|
       ** For example, it would be useful to view PDF and stdout simultaneously
       ** It would be also nice for mobile users
       * Improvement to observability
+      * Cannot select texts in stdout/stderr
     }
   >
 
