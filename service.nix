@@ -66,6 +66,31 @@ in
   };
 
   config = lib.mkIf cfg.enable (lib.mkMerge [
+    # nginx reverse proxy
+    {
+      security.acme = {
+        email = "pandaman64+acme@gmail.com";
+        acceptTerms = true;
+      };
+
+      services.nginx = {
+        enable = true;
+
+        recommendedGzipSettings = true;
+        recommendedOptimisation = true;
+        recommendedProxySettings = true;
+        recommendedTlsSettings = true;
+
+        virtualHosts."api.satysfi-playground.tech" = {
+          enableACME = true;
+          forceSSL = true;
+          locations."/" = {
+            proxyPass = "http://127.0.0.1:8080";
+          };
+        };
+      };
+    }
+    # SATySFi Playground service
     {
       virtualisation.podman.enable = true;
 

@@ -12,7 +12,7 @@ nixpkgs.lib.nixosSystem {
         "${nixpkgs}/nixos/modules/virtualisation/amazon-image.nix"
       ];
 
-      networking.firewall.allowedTCPPorts = [ 22 8080 ];
+      networking.firewall.allowedTCPPorts = [ 22 80 443 ];
 
       services.satysfi-playground = rec {
         enable = true;
