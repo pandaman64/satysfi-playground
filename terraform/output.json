@@ -1,17 +1,4 @@
 {
-  "route53_name_servers": {
-    "sensitive": false,
-    "type": [
-      "list",
-      "string"
-    ],
-    "value": [
-      "ns-1444.awsdns-52.org",
-      "ns-1625.awsdns-11.co.uk",
-      "ns-345.awsdns-43.com",
-      "ns-899.awsdns-48.net"
-    ]
-  },
   "s3_public_domain_name": {
     "sensitive": false,
     "type": "string",
