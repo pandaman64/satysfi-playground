@@ -33,10 +33,6 @@ locals {
   machine_availability_zone = "ap-northeast-1a"
 }
 
-output "public_ip" {
-  value = aws_eip.machine.public_ip
-}
-
 output "s3_region" {
   value = aws_s3_bucket.share.region
 }
@@ -48,8 +44,4 @@ output "s3_public_domain_name" {
 # We need to set these name servers in Google Domains
 output "route53_name_servers" {
   value = aws_route53_zone.satysfi-playground_tech.name_servers
-}
-
-output "api_domain_name" {
-  value = aws_route53_record.satysfi-playground_tech.fqdn
 }

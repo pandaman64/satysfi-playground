@@ -1,14 +1,4 @@
 {
-  "api_domain_name": {
-    "sensitive": false,
-    "type": "string",
-    "value": "api.satysfi-playground.tech"
-  },
-  "public_ip": {
-    "sensitive": false,
-    "type": "string",
-    "value": "52.196.154.131"
-  },
   "route53_name_servers": {
     "sensitive": false,
     "type": [
