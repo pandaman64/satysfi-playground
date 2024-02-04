@@ -17,31 +17,7 @@ const EditorPage: VFC<EditorPageProps> = ({ input, stdout, stderr, existsPdf, pd
   const router = useRouter()
 
   async function onRun() {
-    if (editorRef.current !== null) {
-      setIsLoading(true);
-      try {
-        const source = editorRef.current.getValue();
-        const body = {
-          source: source,
-        };
-        const response = await fetch(`${apiUrl}/persist`, {
-          method: "POST",
-          mode: "cors",
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(body),
-        });
-        const { status, s3_url: s3Url }: { status: number, s3_url: string } = await response.json();
-
-        const buildId = s3Url.split("/").pop()
-        if (buildId !== undefined) {
-          router.push(`/share/${buildId}`)
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    }
+    alert("SATySFi Playgroundはコンパイル機能を停止しました。これまでのご利用ありがとうございました。")
   }
 
   return (
